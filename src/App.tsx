@@ -1,0 +1,66 @@
+import { useState } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './components/Login';
+import Layout from './components/Layout';
+import EnquiryIndent from './pages/EnquiryIndent';
+import ChallanReceipt from './pages/ChallanReceipt';
+import Quotation from './pages/Quotation';
+import FollowUp from './pages/FollowUp';
+import RepairStatus from './pages/RepairStatus';
+import PaymentStatus from './pages/PaymentStatus';
+import Tally from './pages/Tally';
+import Handover from './pages/Handover';
+import Feedback from './pages/Feedback';
+import Dashboard from './pages/Dashboard';
+
+function AppContent() {
+  const { isAuthenticated } = useAuth();
+  const [currentPage, setCurrentPage] = useState('dashboard');
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'enquiry':
+        return <EnquiryIndent />;
+      case 'challan':
+        return <ChallanReceipt />;
+      case 'quotation':
+        return <Quotation />;
+      case 'followup':
+        return <FollowUp />;
+      case 'repairstatus':
+        return <RepairStatus />;
+      case 'paymentstatus':
+        return <PaymentStatus />;
+      case 'tally':
+        return <Tally />;
+      case 'handover':
+        return <Handover />;
+      case 'feedback':
+        return <Feedback />;
+      default:
+        return <div className="text-2xl font-bold text-gray-800">Page Not Found</div>;
+    }
+  };
+
+  return (
+    <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+      {renderPage()}
+    </Layout>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+export default App;
