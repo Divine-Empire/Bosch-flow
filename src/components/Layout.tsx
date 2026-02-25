@@ -19,9 +19,9 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
     { id: 'quotation', label: 'Quotation', icon: FileSpreadsheet },
     { id: 'followup', label: 'Follow Up', icon: PhoneCall },
     { id: 'repairstatus', label: 'Repair Status', icon: Wrench },
-    { id: 'paymentstatus', label: 'Payment Status', icon: CreditCard },
     { id: 'tally', label: 'Tally', icon: Calculator },
     { id: 'handover', label: 'Handover', icon: PackageCheck },
+    { id: 'paymentstatus', label: 'Payment Status', icon: CreditCard },
     { id: 'feedback', label: 'Feedback', icon: MessageSquare },
   ];
 
@@ -54,9 +54,8 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
       </nav>
 
       <aside
-        className={`fixed top-16 left-0 bottom-0 w-64 bg-white shadow-lg transform transition-transform duration-300 z-20 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-16 left-0 bottom-0 w-64 bg-white shadow-lg transform transition-transform duration-300 z-20 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <nav className="p-4">
           <ul className="space-y-2">
@@ -69,11 +68,10 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
                       onNavigate(item.id);
                       setSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      currentPage === item.id
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === item.id
                         ? 'bg-blue-50 text-blue-600 font-medium'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <Icon size={20} />
                     {item.label}

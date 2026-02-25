@@ -42,7 +42,8 @@ export interface Enquiry {
   delay2?: string;
   shareQuestions?: 'Yes' | 'No';
   quotationNumber?: string;
-  valueBasicWithGst?: string;
+  valueBasic?: string;
+  gstAmount?: string;
   quotationFile?: string;
   quotationRemarks?: string;
 

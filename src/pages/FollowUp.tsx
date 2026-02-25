@@ -104,7 +104,8 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
     // Quotation (Read-only in Follow-up)
     shareQuestions: (row[COL.SHARE_QUESTIONS] as 'Yes' | 'No') || undefined,
     quotationNumber: row[COL.QUOTATION_NUMBER] || '',
-    valueBasicWithGst: row[COL.VALUE_BASIC] || '',
+    valueBasic: row[COL.VALUE_BASIC] || '',
+    gstAmount: row[80] || '', // COL.GST_AMOUNT
     quotationFile: row[COL.QUOTATION_FILE] || '',
 
     // Follow Up Lookups
@@ -147,6 +148,7 @@ export default function FollowUp() {
   const [companyFilter, setCompanyFilter] = useState('');
 
   const [paymentFileObj, setPaymentFileObj] = useState<File | null>(null);
+  const [clientApprovalFileObj, setClientApprovalFileObj] = useState<File | null>(null);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [nextSerialNumber, setNextSerialNumber] = useState<string>('SN-001');
 
@@ -241,6 +243,10 @@ export default function FollowUp() {
     setPaymentFileObj(e.target.files?.[0] ?? null);
   };
 
+  const handleClientApprovalUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setClientApprovalFileObj(e.target.files?.[0] ?? null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEnquiry || !selectedEnquiry.rowIndex) return;
@@ -279,12 +285,20 @@ export default function FollowUp() {
       // I (8): Attachment
       // J (9): Senior Approval
       // K (10): Senior Name
+      // L (11): Client Approval
 
-      const newFollowupRow = new Array(11).fill('');
+      let clientApprovalUrl = '';
+      if (clientApprovalFileObj && formData.followUpStatus === 'Order Received') {
+        const base64CA = await fileToBase64(clientApprovalFileObj);
+        clientApprovalUrl = await uploadFileToDrive(base64CA, clientApprovalFileObj.name, clientApprovalFileObj.type);
+      }
+
+      const newFollowupRow = new Array(12).fill('');
       newFollowupRow[0] = timestampNoTz;
       newFollowupRow[1] = nextSerialNumber;
       newFollowupRow[2] = selectedEnquiry.id;
       newFollowupRow[3] = formData.followUpStatus;
+      newFollowupRow[11] = clientApprovalUrl;
 
       if (formData.followUpStatus.toLowerCase().includes('follow-up')) {
         newFollowupRow[4] = formData.nextDate;
@@ -346,6 +360,7 @@ export default function FollowUp() {
       seniorName: '',
     });
     setPaymentFileObj(null);
+    setClientApprovalFileObj(null);
   };
 
   const openModal = (enquiry: Enquiry) => {
@@ -361,6 +376,7 @@ export default function FollowUp() {
       seniorName: '',
     });
     setPaymentFileObj(null);
+    setClientApprovalFileObj(null);
     setShowModal(true);
   };
 
@@ -550,7 +566,8 @@ export default function FollowUp() {
                       )}
                       <div className="flex gap-4">
                         <p><span className="text-gray-400 text-xs uppercase mr-1">Quot #:</span> {enquiry.quotationNumber}</p>
-                        <p><span className="text-gray-400 text-xs uppercase mr-1">Value:</span> {enquiry.valueBasicWithGst}</p>
+                        <p><span className="text-gray-400 text-xs uppercase mr-1">Value:</span> {enquiry.valueBasic}</p>
+                        <p><span className="text-gray-400 text-xs uppercase mr-1">GST:</span> {enquiry.gstAmount}</p>
                       </div>
                     </div>
 
@@ -615,7 +632,8 @@ export default function FollowUp() {
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Contact Number</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">HO Bill Address</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Quotation No</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Value (GST)</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Basic Value</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">GST</th>
 
                   {activeTab === 'pending' && (
                     <>
@@ -660,7 +678,8 @@ export default function FollowUp() {
                     <td className="px-4 py-3">{enquiry.contactPersonNumber}</td>
                     <td className="px-4 py-3 max-w-xs truncate" title={enquiry.hoBillAddress}>{enquiry.hoBillAddress}</td>
                     <td className="px-4 py-3">{enquiry.quotationNumber}</td>
-                    <td className="px-4 py-3">{enquiry.valueBasicWithGst}</td>
+                    <td className="px-4 py-3">{enquiry.valueBasic}</td>
+                    <td className="px-4 py-3">{enquiry.gstAmount}</td>
 
                     {activeTab === 'pending' && (
                       <>
@@ -758,8 +777,12 @@ export default function FollowUp() {
                     <p className="text-gray-900">{selectedEnquiry.quotationNumber}</p>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Value (GST):</span>
-                    <p className="text-gray-900">{selectedEnquiry.valueBasicWithGst}</p>
+                    <span className="font-medium text-gray-700">Basic Value:</span>
+                    <p className="text-gray-900">{selectedEnquiry.valueBasic}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">GST:</span>
+                    <p className="text-gray-900">{selectedEnquiry.gstAmount}</p>
                   </div>
                 </div>
               </div>
@@ -842,6 +865,21 @@ export default function FollowUp() {
                         <option value="Advance">Advance</option>
                         <option value="Credit">Credit</option>
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Client Approval
+                      </label>
+                      <input
+                        type="file"
+                        onChange={handleClientApprovalUpload}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        accept="image/*,.pdf"
+                      />
+                      {clientApprovalFileObj && (
+                        <p className="text-xs text-green-600 mt-1">Selected: {clientApprovalFileObj.name}</p>
+                      )}
                     </div>
 
                     {formData.paymentTerm === 'Advance' && (

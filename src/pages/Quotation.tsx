@@ -44,6 +44,7 @@ const COL = {
   VALUE_BASIC: 31,
   QUOTATION_FILE: 32,
   QUOTATION_REMARKS: 33,
+  GST_AMOUNT: 80, // Col CC
 };
 
 function parseJsonCell(value: string): string[] {
@@ -102,7 +103,8 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
     delay2: row[COL.DELAY_2] ? String(row[COL.DELAY_2]).trim() : '',
     shareQuestions: (row[COL.SHARE_QUESTIONS] as 'Yes' | 'No') || undefined,
     quotationNumber: row[COL.QUOTATION_NUMBER] || '',
-    valueBasicWithGst: row[COL.VALUE_BASIC] || '',
+    valueBasic: row[COL.VALUE_BASIC] || '',
+    gstAmount: row[COL.GST_AMOUNT] || '',
     quotationFile: row[COL.QUOTATION_FILE] || '',
     quotationRemarks: row[COL.QUOTATION_REMARKS] || '',
 
@@ -135,12 +137,14 @@ export default function Quotation() {
   const [formData, setFormData] = useState<{
     shareQuestions: 'Yes' | 'No' | '';
     quotationNumber: string;
-    valueBasicWithGst: string;
+    valueBasic: string;
+    gstAmount: string;
     quotationRemarks: string;
   }>({
     shareQuestions: '',
     quotationNumber: '',
-    valueBasicWithGst: '',
+    valueBasic: '',
+    gstAmount: '',
     quotationRemarks: '',
   });
 
@@ -197,11 +201,12 @@ export default function Quotation() {
       const actualTimestamp = formatTimestamp(new Date());
 
       // 1. Prepare sparse array immediately
-      const rowData = new Array(34).fill('');
+      const rowData = new Array(81).fill('');
       rowData[COL.ACTUAL_2] = actualTimestamp;
       rowData[COL.SHARE_QUESTIONS] = formData.shareQuestions;
       rowData[COL.QUOTATION_NUMBER] = formData.quotationNumber;
-      rowData[COL.VALUE_BASIC] = formData.valueBasicWithGst;
+      rowData[COL.VALUE_BASIC] = formData.valueBasic;
+      rowData[COL.GST_AMOUNT] = formData.gstAmount;
       rowData[COL.QUOTATION_REMARKS] = formData.quotationRemarks;
 
       let finalFileUrl = selectedEnquiry.quotationFile || '';
@@ -237,7 +242,8 @@ export default function Quotation() {
               actual2: actualTimestamp,
               shareQuestions: formData.shareQuestions as 'Yes' | 'No',
               quotationNumber: formData.quotationNumber,
-              valueBasicWithGst: formData.valueBasicWithGst,
+              valueBasic: formData.valueBasic,
+              gstAmount: formData.gstAmount,
               // optimistically use existing URL or assume new one is uploading
               quotationFile: finalFileUrl,
               quotationRemarks: formData.quotationRemarks,
@@ -249,7 +255,7 @@ export default function Quotation() {
       // Close modal instantly
       setShowModal(false);
       setSelectedEnquiry(null);
-      setFormData({ shareQuestions: '', quotationNumber: '', valueBasicWithGst: '', quotationRemarks: '' });
+      setFormData({ shareQuestions: '', quotationNumber: '', valueBasic: '', gstAmount: '', quotationRemarks: '' });
       setQuotationFileObj(null);
 
       // Wait for background tasks to finish without locking UI
@@ -267,7 +273,8 @@ export default function Quotation() {
     setFormData({
       shareQuestions: enquiry.shareQuestions || '',
       quotationNumber: enquiry.quotationNumber || '',
-      valueBasicWithGst: enquiry.valueBasicWithGst || '',
+      valueBasic: enquiry.valueBasic || '',
+      gstAmount: enquiry.gstAmount || '',
       quotationRemarks: enquiry.quotationRemarks || '',
     });
     setQuotationFileObj(null);
@@ -501,8 +508,12 @@ export default function Quotation() {
                           <span className="font-medium text-blue-900">{enquiry.quotationNumber}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Value (GST):</span>
-                          <span className="font-medium text-blue-900">{enquiry.valueBasicWithGst}</span>
+                          <span className="text-gray-600">Basic Value:</span>
+                          <span className="font-medium text-blue-900">{enquiry.valueBasic}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">GST:</span>
+                          <span className="font-medium text-blue-900">{enquiry.gstAmount}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Share Questions:</span>
@@ -565,7 +576,8 @@ export default function Quotation() {
                     <>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Share Questions</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Quotation Number</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Value (GST)</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Basic Value</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">GST</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">File</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Remarks</th>
                     </>
@@ -626,7 +638,8 @@ export default function Quotation() {
                       <>
                         <td className="px-4 py-3">{enquiry.shareQuestions}</td>
                         <td className="px-4 py-3">{enquiry.quotationNumber}</td>
-                        <td className="px-4 py-3">{enquiry.valueBasicWithGst}</td>
+                        <td className="px-4 py-3">{enquiry.valueBasic}</td>
+                        <td className="px-4 py-3">{enquiry.gstAmount}</td>
                         <td className="px-4 py-3">
                           {enquiry.quotationFile ? (
                             <a href={enquiry.quotationFile} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
@@ -730,12 +743,25 @@ export default function Quotation() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Value basic with GST <span className="text-red-500">*</span>
+                      Basic Value <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="text"
-                      value={formData.valueBasicWithGst}
-                      onChange={(e) => setFormData({ ...formData, valueBasicWithGst: e.target.value })}
+                      type="number"
+                      value={formData.valueBasic}
+                      onChange={(e) => setFormData({ ...formData, valueBasic: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      GST <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.gstAmount}
+                      onChange={(e) => setFormData({ ...formData, gstAmount: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       required
                     />
@@ -779,7 +805,7 @@ export default function Quotation() {
                   onClick={() => {
                     setShowModal(false);
                     setSelectedEnquiry(null);
-                    setFormData({ shareQuestions: '', quotationNumber: '', valueBasicWithGst: '', quotationRemarks: '' });
+                    setFormData({ shareQuestions: '', quotationNumber: '', valueBasic: '', gstAmount: '', quotationRemarks: '' });
                     setQuotationFileObj(null);
                   }}
                   className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"

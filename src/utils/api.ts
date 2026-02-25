@@ -6,7 +6,7 @@ interface CacheEntry {
     timestamp: number;
 }
 const cache: Record<string, CacheEntry> = {};
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 1000; // 5 seconds
 
 /**
  * Fetch all rows from a Google Sheet tab.

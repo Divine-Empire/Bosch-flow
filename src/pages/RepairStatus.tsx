@@ -109,7 +109,8 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
 
     // Quotation (Read-only)
     quotationNumber: row[COL.QUOTATION_NUMBER] || '',
-    valueBasicWithGst: row[COL.VALUE_BASIC] || '',
+    valueBasic: row[COL.VALUE_BASIC] || '',
+    gstAmount: row[80] || '', // COL.GST_AMOUNT
 
     // Follow Up (Read-only)
     paymentTerm: (row[COL.PAYMENT_TERM] as Enquiry['paymentTerm']) || undefined,
@@ -542,7 +543,8 @@ export default function RepairStatus() {
 
                   {activeTab === 'pending' && (
                     <>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Value (GST)</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Basic Value</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">GST</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Status</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Customer Said</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Advance</th>
@@ -587,7 +589,8 @@ export default function RepairStatus() {
 
                     {activeTab === 'pending' && (
                       <>
-                        <td className="px-4 py-3">{enquiry.valueBasicWithGst}</td>
+                        <td className="px-4 py-3">{enquiry.valueBasic}</td>
+                        <td className="px-4 py-3">{enquiry.gstAmount}</td>
                         <td className="px-4 py-3">{enquiry.followUpStatus}</td>
                         <td className="px-4 py-3 max-w-xs truncate" title={enquiry.whatDidCustomerSay}>{enquiry.whatDidCustomerSay || '-'}</td>
                         <td className="px-4 py-3">{enquiry.advanceValue || '-'}</td>
