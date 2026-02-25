@@ -133,14 +133,11 @@ export default function EnquiryIndent() {
 
   // State for Receiver Dropdown
   const [receiverDropdownOpen, setReceiverDropdownOpen] = useState(false);
-
-  console.log("rnnit")
+  const [receiverSearch, setReceiverSearch] = useState('');
 
   // State for Company Dropdown
   const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState('');
-
-  console.log(companySearch);
 
   // State for Item Details Modal
   const [viewItemsModal, setViewItemsModal] = useState<Item[] | null>(null);
@@ -235,6 +232,12 @@ export default function EnquiryIndent() {
     const lower = companySearch.toLowerCase().trim();
     return companies.filter(c => c.companyName.toLowerCase().includes(lower));
   }, [companies, companySearch]);
+
+  const filteredReceivers = useMemo(() => {
+    if (!receiverSearch.trim()) return receiverNames;
+    const lower = receiverSearch.toLowerCase().trim();
+    return receiverNames.filter(n => n.toLowerCase().includes(lower));
+  }, [receiverNames, receiverSearch]);
 
   const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
     const newItems = [...formData.items];
@@ -718,42 +721,42 @@ export default function EnquiryIndent() {
                   {billFile && <p className="text-xs text-gray-500 mt-1">Selected: {billFile.name}</p>}
                 </div>
 
-                {/* Receiver Name */}
+                {/* Receiver Name — combobox */}
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Receiver Name</label>
-                  <div
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 bg-white cursor-pointer flex justify-between items-center ${formData.receiverName ? 'text-gray-900' : 'text-gray-500'
-                      }`}
-                    onClick={() => setReceiverDropdownOpen(!receiverDropdownOpen)}
-                  >
-                    <span className="truncate">{formData.receiverName || 'Select Receiver'}</span>
-                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+                  <input
+                    type="text"
+                    value={receiverSearch}
+                    onChange={(e) => {
+                      setReceiverSearch(e.target.value);
+                      setFormData(prev => ({ ...prev, receiverName: e.target.value }));
+                      setReceiverDropdownOpen(true);
+                    }}
+                    onFocus={() => setReceiverDropdownOpen(true)}
+                    onBlur={() => setReceiverDropdownOpen(false)}
+                    placeholder="Search or Select Receiver..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
+                  />
 
-                  {receiverDropdownOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setReceiverDropdownOpen(false)}
-                      ></div>
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {receiverDropdownOpen && filteredReceivers.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filteredReceivers.map((name) => (
                         <div
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-gray-500 text-sm"
-                          onClick={() => { handleInputChange('receiverName', ''); setReceiverDropdownOpen(false); }}
+                          key={name}
+                          className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm ${formData.receiverName === name ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                            }`}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // prevents blur before selection
+                            setReceiverSearch(name);
+                            setFormData(prev => ({ ...prev, receiverName: name }));
+                            setReceiverDropdownOpen(false);
+                          }}
                         >
-                          Select Receiver
+                          {name}
                         </div>
-                        {receiverNames.map(name => (
-                          <div
-                            key={name}
-                            className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm ${formData.receiverName === name ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                            onClick={() => { handleInputChange('receiverName', name); setReceiverDropdownOpen(false); }}
-                          >
-                            {name}
-                          </div>
-                        ))}
-                      </div>
-                    </>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
