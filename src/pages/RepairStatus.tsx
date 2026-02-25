@@ -129,6 +129,40 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
   };
 }
 
+/** Extract YYYY-MM-DD from any timestamp string (ISO or space-separated) */
+function formatDate(value: string | undefined): string {
+  if (!value) return '-';
+  return value.substring(0, 10);
+}
+
+/**
+ * Convert a Google Sheets duration value to a readable hours string.
+ * Sheets serializes durations (e.g. from a formula like =B2-A2) as a
+ * date-time anchored at its 1899-12-29 UTC epoch. We subtract that
+ * base to get total elapsed time, handling durations > 24h correctly.
+ */
+function formatDelay(value: string | undefined): string {
+  if (!value) return '0 hrs';
+  if (value.includes('T') || value.startsWith('1899') || value.startsWith('1900')) {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) {
+      // Sheets duration epoch observed at 1899-12-29T00:00:00Z
+      const BASE_MS = Date.UTC(1899, 11, 29); // Dec 29, 1899 00:00 UTC
+      const totalMs = d.getTime() - BASE_MS;
+      if (totalMs >= 0) {
+        const totalMinutes = Math.floor(totalMs / 60000);
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        return m > 0 ? `${h}h ${m}m` : `${h} hrs`;
+      }
+    }
+  }
+  // Plain numeric fallback
+  const num = parseFloat(value);
+  if (!isNaN(num)) return `${num} hrs`;
+  return value;
+}
+
 export default function RepairStatus() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -481,17 +515,17 @@ export default function RepairStatus() {
                         <div className="grid grid-cols-3 gap-2 mb-2 pb-2 border-b border-gray-200">
                           <div>
                             <span className="text-gray-500 text-xs block uppercase">Planned</span>
-                            <span className="font-medium text-gray-900">{enquiry.planned4?.split(' ')[0] || '-'}</span>
+                            <span className="font-medium text-gray-900">{formatDate(enquiry.planned4)}</span>
                           </div>
                           <div>
                             <span className="text-gray-500 text-xs block uppercase">Actual</span>
-                            <span className="font-medium text-gray-900">{enquiry.actual4?.split(' ')[0] || '-'}</span>
+                            <span className="font-medium text-gray-900">{formatDate(enquiry.actual4)}</span>
                           </div>
                           <div>
                             <span className="text-gray-500 text-xs block uppercase">Delay</span>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium inline-block mt-0.5 ${parseInt(enquiry.delay4 || '0') > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                               }`}>
-                              {enquiry.delay4 || '0'} Days
+                              {formatDelay(enquiry.delay4)}
                             </span>
                           </div>
                         </div>
@@ -606,12 +640,12 @@ export default function RepairStatus() {
 
                     {activeTab === 'history' && (
                       <>
-                        <td className="px-4 py-3 whitespace-nowrap">{enquiry.planned4?.split(' ')[0] || '-'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{enquiry.actual4?.split(' ')[0] || '-'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{formatDate(enquiry.planned4)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{formatDate(enquiry.actual4)}</td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${parseInt(enquiry.delay4 || '0') > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${parseFloat(enquiry.delay4 || '0') > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                             }`}>
-                            {enquiry.delay4 || '0'} Days
+                            {formatDelay(enquiry.delay4)}
                           </span>
                         </td>
                         <td className="px-4 py-3">

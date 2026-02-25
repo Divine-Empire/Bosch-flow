@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Search, Download, Loader2 } from 'lucide-react';
 import { Enquiry, Item } from '../types';
 import { fetchSheet, insertRow, uploadFileToDrive } from '../utils/api';
+import { useRefresh } from '../contexts/RefreshContext';
 
 const SHEET_NAME = 'Indent';
 const FOLLOW_UP_SHEET_NAME = 'Follow-Up';
@@ -151,6 +152,7 @@ export default function FollowUp() {
   const [clientApprovalFileObj, setClientApprovalFileObj] = useState<File | null>(null);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [nextSerialNumber, setNextSerialNumber] = useState<string>('SN-001');
+  const { refreshCount, triggerRefresh } = useRefresh();
 
   const [formData, setFormData] = useState<{
     followUpStatus: string;
@@ -237,7 +239,7 @@ export default function FollowUp() {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, refreshCount]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPaymentFileObj(e.target.files?.[0] ?? null);
@@ -312,7 +314,7 @@ export default function FollowUp() {
           newFollowupRow[9] = formData.seniorApproval;
           newFollowupRow[10] = formData.seniorName;
         }
-      } else if (formData.followUpStatus === 'Order Cancelled') {
+      } else if (['Order Cancelled', 'Machine is fully under warranty'].includes(formData.followUpStatus)) {
         newFollowupRow[5] = formData.whatDidCustomerSay;
       } else {
         // Fallback based on dropdown selections we don't know yet
@@ -327,16 +329,15 @@ export default function FollowUp() {
 
       // Optimistically update
       setEnquiries(prev =>
-        // Per your feedback we don't update Indent, but we'll show it in memory until they refresh so they don't submit twice.
-        // Or if you only want it to just close and keep them there, we could just do nothing.
-        // Actually, since it doesn't move to history in Indent, we won't mutate the local `enquiries` for it so it stays there!
-        // But doing so might leave the "Process" button available. The cleanest UX is keeping it as it was if no Indent modifications.
         prev
       );
 
       // Increment local SN for the very next immediate submission without full page refresh
       const currSnNum = parseInt(nextSerialNumber.split('-')[1], 10);
       setNextSerialNumber(`SN-${String(currSnNum + 1).padStart(3, '0')}`);
+
+      // Notify other pages that data has changed
+      triggerRefresh();
 
       setShowModal(false);
       setSelectedEnquiry(null);
@@ -834,10 +835,10 @@ export default function FollowUp() {
                   </>
                 )}
 
-                {formData.followUpStatus === 'Order Cancelled' && (
+                {['Order Cancelled', 'Machine is fully under warranty'].includes(formData.followUpStatus) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      What Did Customer Say <span className="text-red-500">*</span>
+                      Remarks <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       value={formData.whatDidCustomerSay}

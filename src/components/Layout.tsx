@@ -14,7 +14,7 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'enquiry', label: 'Enquiry Indent', icon: FileText },
+    { id: 'enquiry', label: 'Enquiry Entry', icon: FileText },
     { id: 'challan', label: 'Challan Receipt', icon: Receipt },
     { id: 'quotation', label: 'Quotation', icon: FileSpreadsheet },
     { id: 'followup', label: 'Follow Up', icon: PhoneCall },
@@ -69,8 +69,8 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
                       setSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === item.id
-                        ? 'bg-blue-50 text-blue-600 font-medium'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-blue-50 text-blue-600 font-medium'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <Icon size={20} />

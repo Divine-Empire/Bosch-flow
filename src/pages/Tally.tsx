@@ -119,6 +119,7 @@ export default function Tally() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
+  const [postedByOptions, setPostedByOptions] = useState<string[]>([]);
   const [formData, setFormData] = useState<{
     invoicePlanDate: string;
     invoicePostedBy: string;
@@ -141,7 +142,10 @@ export default function Tally() {
     setLoading(true);
     setError(null);
     try {
-      const rows = await fetchSheet(SHEET_NAME);
+      const [rows, dropdownRows] = await Promise.all([
+        fetchSheet(SHEET_NAME),
+        fetchSheet('Master-Dropdown').catch(() => []),
+      ]);
 
       const headerIndex = rows.findIndex(
         (row: any[]) => String(row[COL.INDENT_NUMBER]).trim().toLowerCase() === 'indent number'
@@ -153,14 +157,21 @@ export default function Tally() {
         .slice(startIndex)
         .filter(enq => {
           const indentId = enq.id;
-          // Keep only rows mapping to this Tally phase that actually have a Planned 6 date 
           if (!indentId || !indentId.startsWith('IN-')) return false;
-
           const planned6 = enq.planned6;
           return (planned6 && planned6.length > 0);
         });
 
       setEnquiries(parsed);
+
+      // Extract Invoice Posted By names from Master-Dropdown Column F (index 5)
+      if (dropdownRows.length > 1) {
+        const names = dropdownRows
+          .slice(1)
+          .map(row => String(row[5] ?? '').trim())
+          .filter(val => val !== '');
+        setPostedByOptions([...new Set(names)]);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
@@ -489,11 +500,11 @@ export default function Tally() {
                         <div className="grid grid-cols-3 gap-2 mb-2 pb-2 border-b border-gray-200">
                           <div>
                             <span className="text-gray-500 text-xs block uppercase">Planned</span>
-                            <span className="font-medium text-gray-900">{enquiry.planned6?.split(' ')[0] || '-'}</span>
+                            <span className="font-medium text-gray-900">{enquiry.planned6?.substring(0, 10) || '-'}</span>
                           </div>
                           <div>
                             <span className="text-gray-500 text-xs block uppercase">Actual</span>
-                            <span className="font-medium text-gray-900">{enquiry.actual6?.split(' ')[0] || '-'}</span>
+                            <span className="font-medium text-gray-900">{enquiry.actual6?.substring(0, 10) || '-'}</span>
                           </div>
                           <div>
                             <span className="text-gray-500 text-xs block uppercase">Delay</span>
@@ -552,18 +563,21 @@ export default function Tally() {
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Contact Person</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Contact Number</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Quotation No</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Payment Term</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Senior Approval</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Senior Name</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Machine Repair</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Payment Status</th>
+                  {activeTab === 'pending' && (
+                    <>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Payment Term</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Senior Approval</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Senior Name</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Machine Repair</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Payment Status</th>
+                    </>
+                  )}
 
                   {activeTab === 'history' && (
                     <>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Planned Date</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Actual Date</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Delay Time</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Plan Date</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Posted By</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Spare Inv No</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Spare Inv</th>
@@ -593,22 +607,25 @@ export default function Tally() {
                     <td className="px-4 py-3">{enquiry.contactPersonName}</td>
                     <td className="px-4 py-3">{enquiry.contactPersonNumber}</td>
                     <td className="px-4 py-3">{enquiry.quotationNumber}</td>
-                    <td className="px-4 py-3">{enquiry.paymentTerm || '-'}</td>
-                    <td className="px-4 py-3">{enquiry.seniorApproval || '-'}</td>
-                    <td className="px-4 py-3">{enquiry.seniorName || '-'}</td>
-                    <td className="px-4 py-3">{enquiry.machineRepairStatus}</td>
-                    <td className="px-4 py-3">{enquiry.currentPaymentStatus}</td>
+                    {activeTab === 'pending' && (
+                      <>
+                        <td className="px-4 py-3">{enquiry.paymentTerm || '-'}</td>
+                        <td className="px-4 py-3">{enquiry.seniorApproval || '-'}</td>
+                        <td className="px-4 py-3">{enquiry.seniorName || '-'}</td>
+                        <td className="px-4 py-3">{enquiry.machineRepairStatus}</td>
+                        <td className="px-4 py-3">{enquiry.currentPaymentStatus}</td>
+                      </>
+                    )}
 
                     {activeTab === 'history' && (
                       <>
-                        <td className="px-4 py-3 whitespace-nowrap">{enquiry.planned6?.split(' ')[0] || '-'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{enquiry.actual6?.split(' ')[0] || '-'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{enquiry.planned6?.substring(0, 10) || '-'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{enquiry.actual6?.substring(0, 10) || '-'}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${parseInt(enquiry.delay6 || '0') > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                             {enquiry.delay6 || '0'} Days
                           </span>
                         </td>
-                        <td className="px-4 py-3">{enquiry.invoicePlanDate}</td>
                         <td className="px-4 py-3">{enquiry.invoicePostedBy}</td>
                         <td className="px-4 py-3">{enquiry.spareInvoiceNo || '-'}</td>
                         <td className="px-4 py-3">
@@ -694,13 +711,17 @@ export default function Tally() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Invoice Posted By <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.invoicePostedBy}
                     onChange={(e) => setFormData({ ...formData, invoicePostedBy: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     required
-                  />
+                  >
+                    <option value="">Select Person</option>
+                    {postedByOptions.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

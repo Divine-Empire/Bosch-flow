@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, X, Download, Loader2 } from 'lucide-react';
+import { Plus, X, Download, Loader2, CloudCog } from 'lucide-react';
 import { Enquiry, Item } from '../types';
 import { fetchSheet, insertRow, uploadFileToDrive, formatTimestamp } from '../utils/api';
+import { useRefresh } from '../contexts/RefreshContext';
 
 // ─── Sheet constants ───────────────────────────────────────────────────────────
 const SHEET_NAME = 'Indent';
@@ -121,11 +122,25 @@ export default function EnquiryIndent() {
   const [showModal, setShowModal] = useState(false);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
+  const [receiverNames, setReceiverNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const { refreshCount, triggerRefresh } = useRefresh();
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [billFile, setBillFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<Omit<Enquiry, 'id' | 'createdAt'>>(defaultForm());
+
+  // State for Receiver Dropdown
+  const [receiverDropdownOpen, setReceiverDropdownOpen] = useState(false);
+
+  console.log("rnnit")
+
+  // State for Company Dropdown
+  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
+  const [companySearch, setCompanySearch] = useState('');
+
+  console.log(companySearch);
 
   // State for Item Details Modal
   const [viewItemsModal, setViewItemsModal] = useState<Item[] | null>(null);
@@ -167,6 +182,13 @@ export default function EnquiryIndent() {
           gstNumber: String(row[2] ?? '').trim(),
         }));
       setCompanies(companyList);
+
+      // Extract Receiver Names from Master-Dropdown Column E (index 4)
+      const receiverList: string[] = dropdownRows
+        .slice(1) // skip header row
+        .map(row => String(row[4] ?? '').trim())
+        .filter(val => val !== '');
+      setReceiverNames(Array.from(new Set(receiverList)));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
@@ -176,7 +198,7 @@ export default function EnquiryIndent() {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, refreshCount]);
 
   // ── Form handlers ────────────────────────────────────────────────────────
   const handleInputChange = (field: keyof Enquiry, value: string) => {
@@ -192,6 +214,7 @@ export default function EnquiryIndent() {
       hoBillAddress: '',
       gstNumber: '',
     }));
+    setCompanySearch('');
   };
 
   /** When an existing company is selected, auto-fill HO Bill Address and GST Number. */
@@ -203,7 +226,15 @@ export default function EnquiryIndent() {
       hoBillAddress: record?.hoBillAddress ?? '',
       gstNumber: record?.gstNumber ?? '',
     }));
+    setCompanySearch(companyName);
+    setCompanyDropdownOpen(false);
   };
+
+  const filteredCompanies = useMemo(() => {
+    if (!companySearch.trim()) return companies;
+    const lower = companySearch.toLowerCase().trim();
+    return companies.filter(c => c.companyName.toLowerCase().includes(lower));
+  }, [companies, companySearch]);
 
   const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
     const newItems = [...formData.items];
@@ -311,7 +342,10 @@ export default function EnquiryIndent() {
       };
       setEnquiries(prev => [newEnquiry, ...prev]);
 
-      // 8. Reset
+      // 8. Notify other pages that data has changed
+      triggerRefresh();
+
+      // 9. Reset
       setShowModal(false);
       setBillFile(null);
       setFormData(defaultForm());
@@ -332,7 +366,7 @@ export default function EnquiryIndent() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Enquiry Indent</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Enquiry Entry</h1>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -427,7 +461,7 @@ export default function EnquiryIndent() {
               <table className="w-full min-w-max text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Indent Number', 'Enquiry Type', 'Client Type', 'Company Name', 'Contact Person Name',
+                    {['Enquiry Number', 'Enquiry Type', 'Client Type', 'Company Name', 'Contact Person Name',
                       'Contact Person Number', 'HO Bill Address', 'Location', 'GST Number', 'Client Email Id',
                       'Priority', 'Warranty Check', 'Warranty Last Date', 'Bill Attach',
                       'Item Details', 'Receiver Name'].map(h => (
@@ -527,20 +561,63 @@ export default function EnquiryIndent() {
                 </div>
 
                 {/* Company Name — dropdown for Existing, free text for New */}
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
                   {formData.clientType === 'Existing' ? (
-                    <select
-                      value={formData.companyName}
-                      onChange={e => handleCompanySelect(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">Select Company</option>
-                      {companies.map(c => (
-                        <option key={c.companyName} value={c.companyName}>{c.companyName}</option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={companySearch}
+                        onChange={(e) => {
+                          const typed = e.target.value;
+
+                          console.log(typed);
+                          const record = companyMap.get(typed);
+                          setCompanySearch(typed);
+                          setFormData(prev => ({
+                            ...prev,
+                            companyName: typed,
+                            hoBillAddress: record?.hoBillAddress ?? '',
+                            gstNumber: record?.gstNumber ?? '',
+                          }));
+                          setCompanyDropdownOpen(true);
+                        }}
+                        onFocus={() => setCompanyDropdownOpen(true)}
+                        onBlur={() => setCompanyDropdownOpen(false)}
+                        placeholder="Search or Select Company..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                        autoComplete="off"
+                      />
+
+                      {companyDropdownOpen && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 flex flex-col">
+                          <div className="overflow-y-auto">
+                            {filteredCompanies.length > 0 ? (
+                              filteredCompanies.map((c, index) => (
+                                <div
+                                  key={index}
+                                  className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm ${formData.companyName === c.companyName
+                                    ? 'bg-blue-50 text-blue-700 font-medium'
+                                    : 'text-gray-700'
+                                    }`}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault(); // critical — prevents blur before selection
+                                    handleCompanySelect(c.companyName);
+                                  }}
+                                >
+                                  {c.companyName}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-3 py-4 text-center text-sm text-gray-500">
+                                No companies found
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <input type="text" value={formData.companyName} onChange={e => handleInputChange('companyName', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
@@ -642,10 +719,42 @@ export default function EnquiryIndent() {
                 </div>
 
                 {/* Receiver Name */}
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Receiver Name</label>
-                  <input type="text" value={formData.receiverName} onChange={e => handleInputChange('receiverName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
+                  <div
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 bg-white cursor-pointer flex justify-between items-center ${formData.receiverName ? 'text-gray-900' : 'text-gray-500'
+                      }`}
+                    onClick={() => setReceiverDropdownOpen(!receiverDropdownOpen)}
+                  >
+                    <span className="truncate">{formData.receiverName || 'Select Receiver'}</span>
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+
+                  {receiverDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setReceiverDropdownOpen(false)}
+                      ></div>
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        <div
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-gray-500 text-sm"
+                          onClick={() => { handleInputChange('receiverName', ''); setReceiverDropdownOpen(false); }}
+                        >
+                          Select Receiver
+                        </div>
+                        {receiverNames.map(name => (
+                          <div
+                            key={name}
+                            className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm ${formData.receiverName === name ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                            onClick={() => { handleInputChange('receiverName', name); setReceiverDropdownOpen(false); }}
+                          >
+                            {name}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -660,30 +769,60 @@ export default function EnquiryIndent() {
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                {/* Desktop/Tablet Headers */}
+                <div className="hidden sm:grid grid-cols-12 gap-3 mb-2 px-1 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <div className="col-span-3">Items Name</div>
+                  <div className="col-span-3">Model Name</div>
+                  <div className="col-span-2">Qty</div>
+                  <div className="col-span-3">Part No</div>
+                  <div className="col-span-1 text-center">Action</div>
+                </div>
+
+                <div className="space-y-4 sm:space-y-2">
                   {formData.items.map((item, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="font-medium text-gray-700">Item {index + 1}</span>
+                    <div key={index} className="relative bg-gray-50 sm:bg-transparent p-4 sm:p-0 border border-gray-200 sm:border-none rounded-lg sm:rounded-none">
+                      {/* Mobile Header */}
+                      <div className="flex justify-between items-center mb-3 sm:hidden">
+                        <span className="font-medium text-gray-700 text-sm">Item {index + 1}</span>
                         {formData.items.length > 1 && (
-                          <button type="button" onClick={() => removeItem(index)} className="text-red-600 hover:text-red-700">
-                            <X size={18} />
+                          <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 bg-red-50 p-1 rounded transition-colors">
+                            <X size={16} />
                           </button>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                        <input type="text" placeholder="Item Name" value={item.itemName}
-                          onChange={e => handleItemChange(index, 'itemName', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
-                        <input type="text" placeholder="Model Name" value={item.modelName}
-                          onChange={e => handleItemChange(index, 'modelName', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
-                        <input type="number" placeholder="Qty" value={item.qty}
-                          onChange={e => handleItemChange(index, 'qty', parseInt(e.target.value) || 0)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
-                        <input type="text" placeholder="Part No" value={item.partNo}
-                          onChange={e => handleItemChange(index, 'partNo', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                        <div className="col-span-1 sm:col-span-3">
+                          <label className="block sm:hidden text-xs font-medium text-gray-500 mb-1">Items Name</label>
+                          <input type="text" placeholder="Item Name" value={item.itemName}
+                            onChange={e => handleItemChange(index, 'itemName', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" required />
+                        </div>
+                        <div className="col-span-1 sm:col-span-3">
+                          <label className="block sm:hidden text-xs font-medium text-gray-500 mb-1">Model Name</label>
+                          <input type="text" placeholder="Model Name" value={item.modelName}
+                            onChange={e => handleItemChange(index, 'modelName', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" required />
+                        </div>
+                        <div className="col-span-1 sm:col-span-2">
+                          <label className="block sm:hidden text-xs font-medium text-gray-500 mb-1">Qty</label>
+                          <input type="number" placeholder="Qty" value={item.qty === 0 ? '' : item.qty}
+                            onChange={e => handleItemChange(index, 'qty', parseInt(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" required />
+                        </div>
+                        <div className="col-span-1 sm:col-span-3">
+                          <label className="block sm:hidden text-xs font-medium text-gray-500 mb-1">Part No</label>
+                          <input type="text" placeholder="Part No" value={item.partNo}
+                            onChange={e => handleItemChange(index, 'partNo', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" required />
+                        </div>
+                        <div className="hidden sm:flex col-span-1 justify-center items-center">
+                          {formData.items.length > 1 && (
+                            <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Remove Item">
+                              <X size={18} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { RefreshProvider } from './contexts/RefreshContext';
 import Login from './components/Login';
 import Layout from './components/Layout';
-import EnquiryIndent from './pages/EnquiryIndent';
+import EnquiryIndent from './pages/EnquiryEntry';
 import ChallanReceipt from './pages/ChallanReceipt';
 import Quotation from './pages/Quotation';
 import FollowUp from './pages/FollowUp';
@@ -58,7 +59,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <RefreshProvider>
+        <AppContent />
+      </RefreshProvider>
     </AuthProvider>
   );
 }

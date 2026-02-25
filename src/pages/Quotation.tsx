@@ -756,7 +756,7 @@ export default function Quotation() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      GST <span className="text-red-500">*</span>
+                      GST Value <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
