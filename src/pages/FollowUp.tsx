@@ -11,7 +11,7 @@ const DATA_START_INDEX = 7;
 // Column indices derived from row structure
 const COL = {
   TIMESTAMP: 0,
-  INDENT_NUMBER: 1,
+  ENTRY_NO: 1,
   ENQUIRY_TYPE: 2,
   CLIENT_TYPE: 3,
   COMPANY_NAME: 4,
@@ -60,6 +60,30 @@ const COL = {
   SENIOR_NAME: 44,
 };
 
+// Helper: Convert Google Sheets serial date to YYYY-MM-DD string
+function parseSheetDate(value: string | number): string {
+  if (!value) return '';
+  const strVal = String(value).trim();
+
+  // Try parsing as serial number (Google Sheets uses Dec 30, 1899 as epoch)
+  const serial = Number(strVal);
+  if (!isNaN(serial) && serial > 20000) { // arbitrary threshold to ignore normal numbers
+    const epoch = new Date(1899, 11, 30); // Months are 0-indexed in JS
+    const parsedDate = new Date(epoch.getTime() + serial * 86400000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}`;
+  }
+
+  // If it's already a standard date or looks like one, return as is (handle YYYY-MM-DD or DD/MM/YYYY)
+  if (strVal.includes('-') || strVal.includes('/')) {
+    let datePart = strVal.split(' ')[0];
+    datePart = datePart.split('T')[0];
+    return datePart;
+  }
+
+  return strVal;
+}
+
 function parseJsonCell(value: string): string[] {
   if (!value) return [];
   try {
@@ -84,7 +108,7 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
   }));
 
   return {
-    id: row[COL.INDENT_NUMBER],
+    id: row[COL.ENTRY_NO],
     enquiryType: (row[COL.ENQUIRY_TYPE] as Enquiry['enquiryType']) || 'Sales',
     clientType: (row[COL.CLIENT_TYPE] as Enquiry['clientType']) || 'New',
     companyName: row[COL.COMPANY_NAME] || '',
@@ -96,7 +120,7 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
     clientEmailId: row[COL.CLIENT_EMAIL_ID] || '',
     priority: (row[COL.PRIORITY] as Enquiry['priority']) || 'Hot',
     warrantyCheck: (row[COL.WARRANTY_CHECK] as Enquiry['warrantyCheck']) || 'No',
-    warrantyLastDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
+    billDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
     billAttach: row[COL.BILL_ATTACH] || '',
     items: items.length > 0 ? items : [{ itemName: '', modelName: '', qty: 0, partNo: '' }],
     receiverName: row[COL.RECEIVER_NAME] || '',
@@ -151,6 +175,8 @@ export default function FollowUp() {
   const [paymentFileObj, setPaymentFileObj] = useState<File | null>(null);
   const [clientApprovalFileObj, setClientApprovalFileObj] = useState<File | null>(null);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [seniorApprovalOptions, setSeniorApprovalOptions] = useState<string[]>([]);
+  const [paymentModeOptions, setPaymentModeOptions] = useState<string[]>([]);
   const [nextSerialNumber, setNextSerialNumber] = useState<string>('SN-001');
   const { refreshCount, triggerRefresh } = useRefresh();
 
@@ -182,18 +208,40 @@ export default function FollowUp() {
         fetchSheet(FOLLOW_UP_SHEET_NAME).catch(() => [])
       ]);
 
+      // Parse Follow-Up Serial Number and Next Date (Column B -> Index 1, Column E -> Index 4)
+      let maxSn = 0;
+      const followupNextDateMap = new Map<string, string>();
+      // Search backwards to hopefully find the highest SN quickly if it's naturally sorted
+      // Also grab the latest Next Date for each Entry No.
+      for (let i = followUpRows.length - 1; i >= 1; i--) { // Skip header
+        const snCell = followUpRows[i][1];
+        const entryId = followUpRows[i][2]; // Col C -> Index 2
+        let nextDateStr = String(followUpRows[i][4] || '').trim(); // Col E -> Index 4
+
+        if (snCell && typeof snCell === 'string' && snCell.startsWith('SN-')) {
+          const num = parseInt(snCell.split('-')[1], 10);
+          if (!isNaN(num) && num > maxSn) maxSn = num;
+        }
+
+        if (entryId && nextDateStr && !followupNextDateMap.has(String(entryId))) {
+          const formattedDate = parseSheetDate(nextDateStr);
+          followupNextDateMap.set(String(entryId), formattedDate);
+        }
+      }
+      setNextSerialNumber(`SN-${String(maxSn + 1).padStart(3, '0')}`);
+
       // Parse Indent Data
       const headerIndex = indentRows.findIndex(
-        (row: any[]) => String(row[COL.INDENT_NUMBER]).trim().toLowerCase() === 'indent number'
+        (row: any[]) => String(row[COL.ENTRY_NO]).trim().toLowerCase() === 'entry no.'
       );
       const startIndex = headerIndex >= 0 ? headerIndex + 1 : DATA_START_INDEX;
 
       const parsed: Enquiry[] = [];
       for (let i = startIndex; i < indentRows.length; i++) {
         const row = indentRows[i];
-        const indentId = String(row[COL.INDENT_NUMBER]);
+        const entryId = String(row[COL.ENTRY_NO]);
 
-        if (indentId && indentId.startsWith('IN-')) {
+        if (entryId && entryId.startsWith('IN-')) {
           const planned3 = String(row[COL.PLANNED_3] || '').trim();
           const actual3 = String(row[COL.ACTUAL_3] || '').trim();
 
@@ -201,35 +249,36 @@ export default function FollowUp() {
           const isHistory = planned3.length > 0 && actual3.length > 0;
 
           if (isPending || isHistory) {
-            parsed.push(rowToEnquiry(row, i + 1));
+            const eq = rowToEnquiry(row, i + 1);
+            if (followupNextDateMap.has(eq.id)) {
+              eq.nextDate = followupNextDateMap.get(eq.id)!;
+            } else if (eq.nextDate) {
+              eq.nextDate = parseSheetDate(eq.nextDate);
+            }
+            parsed.push(eq);
           }
         }
       }
       setEnquiries(parsed);
 
-      // Parse Dropdown Options (Column D -> Index 3)
+      // Parse Dropdown Options (Status: Col D, Senior Approval: Col G, Payment Mode: Col H)
       if (dropdownRows.length > 1) { // Skip header
-        const options = dropdownRows.slice(1)
-          .map(row => row[3]) // Col D is index 3
-          .filter(val => val && String(val).trim() !== '');
-        setStatusOptions([...new Set(options)]);
+        const sOptions = dropdownRows.slice(1).map(row => row[3]).filter(val => val && String(val).trim() !== '');
+        setStatusOptions([...new Set(sOptions)]);
+
+        const seniorOptions = dropdownRows.slice(1).map(row => row[6]).filter(val => val && String(val).trim() !== '');
+        setSeniorApprovalOptions([...new Set(seniorOptions)]);
+
+        const paymentOptions = dropdownRows.slice(1).map(row => row[7]).filter(val => val && String(val).trim() !== '');
+        setPaymentModeOptions([...new Set(paymentOptions)]);
       } else {
         // Fallback if sheet is empty or misses
         setStatusOptions(['Follow-up', 'Order Received', 'Order Cancelled']);
+        setSeniorApprovalOptions(['Yes', 'No']);
+        setPaymentModeOptions(['Cash', 'Bank Transfer', 'Cheque']);
       }
 
-      // Parse Follow-Up Serial Number (Column B -> Index 1)
-      let maxSn = 0;
-      // Search backwards to hopefully find the highest SN quickly if it's naturally sorted
-      for (let i = followUpRows.length - 1; i >= 1; i--) { // Skip header
-        const snCell = followUpRows[i][1];
-        if (snCell && typeof snCell === 'string' && snCell.startsWith('SN-')) {
-          const num = parseInt(snCell.split('-')[1], 10);
-          if (!isNaN(num) && num > maxSn) maxSn = num;
-        }
-      }
-      setNextSerialNumber(`SN-${String(maxSn + 1).padStart(3, '0')}`);
-
+      // Parse Dropdown Options (Status: Col D, Senior Approval: Col G, Payment Mode: Col H)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
@@ -278,7 +327,7 @@ export default function FollowUp() {
       // Prepare row for Follow-Up sheet
       // A (0): Timestamp
       // B (1): Serial No
-      // C (2): Indent No
+      // C (2): Entry No.
       // D (3): Status
       // E (4): Next Date
       // F (5): What Did Customer Say (Remarks)
@@ -626,7 +675,7 @@ export default function FollowUp() {
               <thead className="bg-gray-50">
                 <tr>
                   {activeTab === 'pending' && <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Action</th>}
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Indent Number</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Entry No.</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Client Type</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Company Name</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Contact Person</th>
@@ -654,7 +703,7 @@ export default function FollowUp() {
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Advance</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Attachment</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Senior Approval</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Senior Name</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Payment Mode</th>
                     </>
                   )}
                 </tr>
@@ -737,8 +786,8 @@ export default function FollowUp() {
 
       {showModal && selectedEnquiry && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg w-full max-w-2xl my-8">
-            <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto my-8 flex flex-col">
+            <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg sticky top-0 z-10">
               <h2 className="text-xl font-bold">Process Follow Up</h2>
               <button
                 onClick={() => {
@@ -762,7 +811,7 @@ export default function FollowUp() {
               <div className="space-y-4 mb-6">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Indent Number:</span>
+                    <span className="font-medium text-gray-700">Entry No.:</span>
                     <p className="text-gray-900">{selectedEnquiry.id}</p>
                   </div>
                   <div>
@@ -926,26 +975,31 @@ export default function FollowUp() {
                           </label>
                           <select
                             value={formData.seniorApproval}
-                            onChange={(e) => setFormData({ ...formData, seniorApproval: e.target.value as 'Yes' | 'No' })}
+                            onChange={(e) => setFormData({ ...formData, seniorApproval: e.target.value as any })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             required
                           >
                             <option value="">Select</option>
-                            <option value="Yes">Yes</option>
-                            <option value="No">No</option>
+                            {seniorApprovalOptions.map((opt, idx) => (
+                              <option key={idx} value={opt}>{opt}</option>
+                            ))}
                           </select>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Senior Name <span className="text-red-500">*</span>
+                            Payment Mode <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            type="text"
+                          <select
                             value={formData.seniorName}
                             onChange={(e) => setFormData({ ...formData, seniorName: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             required
-                          />
+                          >
+                            <option value="">Select Option</option>
+                            {paymentModeOptions.map((opt, idx) => (
+                              <option key={idx} value={opt}>{opt}</option>
+                            ))}
+                          </select>
                         </div>
                       </>
                     )}

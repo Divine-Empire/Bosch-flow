@@ -9,7 +9,7 @@ const DATA_START_INDEX = 7;
 // Column indices derived from row structure
 const COL = {
   TIMESTAMP: 0,
-  INDENT_NUMBER: 1,
+  ENTRY_NO: 1,
   ENQUIRY_TYPE: 2,
   CLIENT_TYPE: 3,
   COMPANY_NAME: 4,
@@ -65,7 +65,7 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
   }));
 
   return {
-    id: row[COL.INDENT_NUMBER],
+    id: row[COL.ENTRY_NO],
     enquiryType: (row[COL.ENQUIRY_TYPE] as Enquiry['enquiryType']) || 'Sales',
     clientType: (row[COL.CLIENT_TYPE] as Enquiry['clientType']) || 'New',
     companyName: row[COL.COMPANY_NAME] || '',
@@ -77,13 +77,13 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
     clientEmailId: row[COL.CLIENT_EMAIL_ID] || '',
     priority: (row[COL.PRIORITY] as Enquiry['priority']) || 'Hot',
     warrantyCheck: (row[COL.WARRANTY_CHECK] as Enquiry['warrantyCheck']) || 'No',
-    warrantyLastDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
+    billDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
     billAttach: row[COL.BILL_ATTACH] || '',
     items: items.length > 0 ? items : [{ itemName: '', modelName: '', qty: 0, partNo: '' }],
     receiverName: row[COL.RECEIVER_NAME] || '',
     createdAt: row[COL.TIMESTAMP] || new Date().toISOString(),
 
-    // Legacy Tally Fields logic required to populate table labels
+    // Legacy InvoiceGeneration Fields logic required to populate table labels
     quotationNumber: row[30] || '',
     paymentTerm: (row[40] as Enquiry['paymentTerm']) || undefined,
     seniorApproval: (row[43] as Enquiry['seniorApproval']) || undefined,
@@ -150,7 +150,7 @@ export default function Handover() {
       const rows = await fetchSheet(SHEET_NAME);
 
       const headerIndex = rows.findIndex(
-        (row: any[]) => String(row[COL.INDENT_NUMBER]).trim().toLowerCase() === 'indent number'
+        (row: any[]) => String(row[COL.ENTRY_NO]).trim().toLowerCase() === 'entry no.'
       );
       const startIndex = headerIndex >= 0 ? headerIndex + 1 : DATA_START_INDEX;
 
@@ -158,9 +158,9 @@ export default function Handover() {
         .map((row, index) => rowToEnquiry(row, index + 1)) // +1 because GAS is 1-indexed and JS is 0-indexed
         .slice(startIndex)
         .filter(enq => {
-          const indentId = enq.id;
+          const entryId = enq.id;
           // Keep only rows mapping to this Handover phase that actually have a Planned 7 date 
-          if (!indentId || !indentId.startsWith('IN-')) return false;
+          if (!entryId || !entryId.startsWith('IN-')) return false;
 
           const planned7 = enq.planned7;
           return (planned7 && planned7.length > 0);
@@ -295,7 +295,7 @@ export default function Handover() {
     setShowModal(true);
   }, []);
 
-  // Pending: Tally done AND Handover NOT Complete
+  // Pending: InvoiceGeneration done AND Handover NOT Complete
   const pendingEnquiries = useMemo(() =>
     enquiries.filter((e) => !e.actual7),
     [enquiries]);
@@ -559,7 +559,7 @@ export default function Handover() {
               <thead className="bg-gray-50">
                 <tr>
                   {activeTab === 'pending' && <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Action</th>}
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Indent Number</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Entry No.</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Client Type</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Company Name</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Contact Person</th>
@@ -694,7 +694,7 @@ export default function Handover() {
               <div className="space-y-4 mb-6 shrink-0">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Indent Number:</span>
+                    <span className="font-medium text-gray-700">Entry No.:</span>
                     <p className="text-gray-900">{selectedEnquiry.id}</p>
                   </div>
                   <div>

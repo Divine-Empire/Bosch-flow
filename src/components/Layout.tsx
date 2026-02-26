@@ -19,7 +19,7 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
     { id: 'quotation', label: 'Quotation', icon: FileSpreadsheet },
     { id: 'followup', label: 'Follow Up', icon: PhoneCall },
     { id: 'repairstatus', label: 'Repair Status', icon: Wrench },
-    { id: 'tally', label: 'Tally', icon: Calculator },
+    { id: 'InvoiceGeneration', label: 'Invoice Generation', icon: Calculator },
     { id: 'handover', label: 'Handover', icon: PackageCheck },
     { id: 'paymentstatus', label: 'Payment Status', icon: CreditCard },
     { id: 'feedback', label: 'Feedback', icon: MessageSquare },

@@ -40,7 +40,7 @@ export const storage = {
         return newEnquiries;
     },
 
-    getNextIndentNumber: (): string => {
+    getNextEntryNumber: (): string => {
         const enquiries = storage.getEnquiries();
         if (enquiries.length === 0) return 'IN-001';
         const maxNum = enquiries.reduce((max, curr) => {

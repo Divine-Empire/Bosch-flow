@@ -7,7 +7,7 @@ export interface Item {
 }
 
 export interface Enquiry {
-  id: string; // Indent Number (IN-001, etc.)
+  id: string; // Entry No. (IN-001, etc.)
   enquiryType: 'Service' | 'Sales' | 'Both';
   clientType: 'New' | 'Existing';
   companyName: string;
@@ -19,7 +19,7 @@ export interface Enquiry {
   clientEmailId: string;
   priority: 'Hot' | 'Warm' | 'Cold';
   warrantyCheck: 'Yes' | 'No';
-  warrantyLastDate?: string;
+  billDate?: string;
   billAttach?: string; // URL or base64
   items: Item[];
   receiverName: string;
@@ -60,6 +60,7 @@ export interface Enquiry {
   paymentAttachment?: string;
   seniorApproval?: 'Yes' | 'No';
   seniorName?: string;
+  clientApprovalFile?: string;
 
   // Repair Status
   planned4?: string;
@@ -75,7 +76,7 @@ export interface Enquiry {
   currentPaymentStatus?: 'Complete' | 'Pending';
   paymentRemarks?: string;
 
-  // Tally
+  // InvoiceGeneration
   planned6?: string;
   actual6?: string;
   delay6?: string;
@@ -85,7 +86,7 @@ export interface Enquiry {
   spareInvoiceFile?: string;
   serviceInvoiceNo?: string;
   serviceInvoiceFile?: string;
-  tallyRemarks?: string;
+  InvoiceGenerationRemarks?: string;
 
   // Handover
   planned7?: string;

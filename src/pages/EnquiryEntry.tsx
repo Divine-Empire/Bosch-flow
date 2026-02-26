@@ -12,7 +12,7 @@ const DATA_START_INDEX = 7;
 // Column indices inside each data row (0-based)
 const COL = {
   TIMESTAMP: 0,
-  INDENT_NUMBER: 1,
+  ENTRY_NO: 1,
   ENQUIRY_TYPE: 2,
   CLIENT_TYPE: 3,
   COMPANY_NAME: 4,
@@ -62,7 +62,7 @@ function rowToEnquiry(row: string[]): Enquiry {
   }));
 
   return {
-    id: row[COL.INDENT_NUMBER],
+    id: row[COL.ENTRY_NO],
     enquiryType: (row[COL.ENQUIRY_TYPE] as Enquiry['enquiryType']) || 'Sales',
     clientType: (row[COL.CLIENT_TYPE] as Enquiry['clientType']) || 'New',
     companyName: row[COL.COMPANY_NAME] ?? '',
@@ -74,7 +74,7 @@ function rowToEnquiry(row: string[]): Enquiry {
     clientEmailId: row[COL.CLIENT_EMAIL_ID] ?? '',
     priority: (row[COL.PRIORITY] as Enquiry['priority']) || 'Hot',
     warrantyCheck: (row[COL.WARRANTY_CHECK] as Enquiry['warrantyCheck']) || 'No',
-    warrantyLastDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
+    billDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
     billAttach: row[COL.BILL_ATTACH] ?? '',
     items: items.length > 0 ? items : [{ id: '1', itemName: '', modelName: '', qty: 0, partNo: '' }],
     receiverName: row[COL.RECEIVER_NAME] ?? '',
@@ -82,8 +82,8 @@ function rowToEnquiry(row: string[]): Enquiry {
   };
 }
 
-/** Derive the next Indent Number (IN-001, IN-002 …) from loaded data. */
-function getNextIndentNumber(enquiries: Enquiry[]): string {
+/** Derive the next Entry No. (IN-001, IN-002 …) from loaded data. */
+function getNextEntryNumber(enquiries: Enquiry[]): string {
   if (enquiries.length === 0) return 'IN-001';
   const max = enquiries.reduce((m, e) => {
     const n = parseInt(e.id.replace('IN-', ''), 10);
@@ -160,12 +160,12 @@ export default function EnquiryIndent() {
 
       // Parse Indent sheet
       const headerIndex = indentRows.findIndex(
-        row => String(row[COL.INDENT_NUMBER]).trim().toLowerCase() === 'indent number'
+        row => String(row[COL.ENTRY_NO]).trim().toLowerCase() === 'entry no.'
       );
       const startIndex = headerIndex >= 0 ? headerIndex + 1 : DATA_START_INDEX;
       const parsed = indentRows
         .slice(startIndex)
-        .filter(row => row[COL.INDENT_NUMBER] && String(row[COL.INDENT_NUMBER]).startsWith('IN-'))
+        .filter(row => row[COL.ENTRY_NO] && String(row[COL.ENTRY_NO]).startsWith('IN-'))
         .map(rowToEnquiry);
       setEnquiries(parsed);
 
@@ -246,7 +246,7 @@ export default function EnquiryIndent() {
   };
 
   const addItem = () => {
-    if (formData.items.length < 15) {
+    if (formData.items.length < 20) {
       setFormData(prev => ({
         ...prev,
         items: [...prev.items, { id: Date.now().toString(), itemName: '', modelName: '', qty: 0, partNo: '' }],
@@ -278,8 +278,8 @@ export default function EnquiryIndent() {
         billAttachUrl = await uploadFileToDrive(base64, billFile.name, billFile.type);
       }
 
-      // 2. Build the next Indent Number
-      const indentNumber = getNextIndentNumber(enquiries);
+      // 2. Build the next Entry No.
+      const entryNo = getNextEntryNumber(enquiries);
       const timestamp = formatTimestamp(new Date());
 
       // 3. Serialize items as JSON arrays (one JSON per column)
@@ -291,7 +291,7 @@ export default function EnquiryIndent() {
       // 4. Build the row (must match sheet column order A→T)
       const row = [
         timestamp,                       // A: Timestamp
-        indentNumber,                    // B: Indent Number
+        entryNo,                    // B: Entry No.
         formData.enquiryType,            // C: Enquiry Type
         formData.clientType,             // D: Client Type
         formData.companyName,            // E: Company Name
@@ -303,7 +303,7 @@ export default function EnquiryIndent() {
         formData.clientEmailId,          // K: Client Email Id
         formData.priority,               // L: Priority
         formData.warrantyCheck,          // M: Warranty Check
-        formData.warrantyLastDate ?? '', // N: Warranty Last Date
+        formData.billDate ?? '', // N: Bill Date
         billAttachUrl,                   // O: Bill Attach (Drive URL)
         itemNames,                       // P: Items Name (JSON)
         modelNames,                      // Q: Model Name (JSON)
@@ -339,7 +339,7 @@ export default function EnquiryIndent() {
       // 7. Update local state optimistically
       const newEnquiry: Enquiry = {
         ...formData,
-        id: indentNumber,
+        id: entryNo,
         createdAt: timestamp,
         billAttach: billAttachUrl,
       };
@@ -410,6 +410,9 @@ export default function EnquiryIndent() {
                           <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
                             {enquiry.id}
                           </span>
+                          <span className="text-xs text-gray-500 ml-2 font-medium">
+                            {enquiry.createdAt ? enquiry.createdAt.slice(0, 10) : ''}
+                          </span>
                           <h3 className="font-medium text-gray-900 mt-1">{enquiry.companyName}</h3>
                           <p className="text-xs text-gray-500">{enquiry.enquiryType} • {enquiry.clientType}</p>
                         </div>
@@ -424,7 +427,7 @@ export default function EnquiryIndent() {
                       <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
                         <div><span className="text-xs text-gray-400 block">Contact</span>{enquiry.contactPersonName}</div>
                         <div><span className="text-xs text-gray-400 block">Phone</span>{enquiry.contactPersonNumber}</div>
-                        <div><span className="text-xs text-gray-400 block">Location</span>{enquiry.location}</div>
+                        <div><span className="text-xs text-gray-400 block">Site Location</span>{enquiry.location}</div>
                         <div><span className="text-xs text-gray-400 block">Receiver</span>{enquiry.receiverName}</div>
                       </div>
 
@@ -464,9 +467,9 @@ export default function EnquiryIndent() {
               <table className="w-full min-w-max text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Enquiry Number', 'Enquiry Type', 'Client Type', 'Company Name', 'Contact Person Name',
-                      'Contact Person Number', 'HO Bill Address', 'Location', 'GST Number', 'Client Email Id',
-                      'Priority', 'Warranty Check', 'Warranty Last Date', 'Bill Attach',
+                    {['Enquiry Number', 'Enquiry Date', 'Enquiry Type', 'Client Type', 'Company Name', 'Contact Person Name',
+                      'Contact Person Number', 'HO Bill Address', 'Site Location', 'GST Number', 'Client Email Id',
+                      'Priority', 'Warranty Check', 'Bill Date', 'Bill Attach',
                       'Item Details', 'Receiver Name'].map(h => (
                         <th key={h} className="px-4 py-3 text-left font-medium text-gray-600 uppercase whitespace-nowrap">{h}</th>
                       ))}
@@ -476,6 +479,7 @@ export default function EnquiryIndent() {
                   {enquiries.map((enquiry) => (
                     <tr key={enquiry.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-blue-600">{enquiry.id}</td>
+                      <td className="px-4 py-3">{enquiry.createdAt ? enquiry.createdAt.slice(0, 10) : '-'}</td>
                       <td className="px-4 py-3">{enquiry.enquiryType}</td>
                       <td className="px-4 py-3">{enquiry.clientType}</td>
                       <td className="px-4 py-3">{enquiry.companyName}</td>
@@ -492,7 +496,7 @@ export default function EnquiryIndent() {
                           }`}>{enquiry.priority}</span>
                       </td>
                       <td className="px-4 py-3">{enquiry.warrantyCheck}</td>
-                      <td className="px-4 py-3">{enquiry.warrantyLastDate ? enquiry.warrantyLastDate.slice(0, 10) : '-'}</td>
+                      <td className="px-4 py-3">{enquiry.billDate ? enquiry.billDate.slice(0, 10) : '-'}</td>
                       <td className="px-4 py-3">
                         {enquiry.billAttach
                           ? <a href={enquiry.billAttach} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1"><Download size={14} />View</a>
@@ -511,7 +515,7 @@ export default function EnquiryIndent() {
                   ))}
                   {enquiries.length === 0 && (
                     <tr>
-                      <td colSpan={19} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={20} className="px-4 py-8 text-center text-gray-500">
                         No enquiries yet. Click "Add Enquiry" to create one.
                       </td>
                     </tr>
@@ -657,7 +661,7 @@ export default function EnquiryIndent() {
 
                 {/* Location */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Site Location</label>
                   <input type="text" value={formData.location} onChange={e => handleInputChange('location', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
                 </div>
@@ -704,11 +708,11 @@ export default function EnquiryIndent() {
                   </select>
                 </div>
 
-                {/* Warranty Last Date (conditional) */}
+                {/* Bill Date (conditional) */}
                 {formData.warrantyCheck === 'Yes' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Warranty Last Date</label>
-                    <input type="date" value={formData.warrantyLastDate ?? ''} onChange={e => handleInputChange('warrantyLastDate', e.target.value)}
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Bill Date</label>
+                    <input type="date" value={formData.billDate ?? ''} onChange={e => handleInputChange('billDate', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
                   </div>
                 )}
@@ -765,10 +769,10 @@ export default function EnquiryIndent() {
               <div className="border-t pt-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Items</h3>
-                  <button type="button" onClick={addItem} disabled={formData.items.length >= 15}
+                  <button type="button" onClick={addItem} disabled={formData.items.length >= 20}
                     className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm">
                     <Plus size={16} />
-                    Add Item ({formData.items.length}/15)
+                    Add Item ({formData.items.length}/20)
                   </button>
                 </div>
 

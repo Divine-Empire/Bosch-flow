@@ -9,7 +9,7 @@ const DATA_START_INDEX = 7;
 // Column indices derived from row structure
 const COL = {
   TIMESTAMP: 0,
-  INDENT_NUMBER: 1,
+  ENTRY_NO: 1,
   ENQUIRY_TYPE: 2,
   CLIENT_TYPE: 3,
   COMPANY_NAME: 4,
@@ -28,7 +28,8 @@ const COL = {
   QTY: 17,
   PART_NO: 18,
   RECEIVER_NAME: 19,
-  // Tally mappings
+  // InvoiceGeneration mappings
+  QUOTATION_FILE: 32, // AG
   PLANNED_6: 55, // BD
   ACTUAL_6: 56,  // BE
   DELAY_6: 57,   // BF
@@ -38,7 +39,7 @@ const COL = {
   SPARE_INVOICE_FILE: 61, // BJ
   SERVICE_INVOICE_NO: 62, // BK
   SERVICE_INVOICE_FILE: 63, // BL
-  TALLY_REMARKS: 64, // BM
+  InvoiceGeneration_REMARKS: 64, // BM
 };
 
 function parseJsonCell(value: string): string[] {
@@ -65,7 +66,7 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
   }));
 
   return {
-    id: row[COL.INDENT_NUMBER],
+    id: row[COL.ENTRY_NO],
     enquiryType: (row[COL.ENQUIRY_TYPE] as Enquiry['enquiryType']) || 'Sales',
     clientType: (row[COL.CLIENT_TYPE] as Enquiry['clientType']) || 'New',
     companyName: row[COL.COMPANY_NAME] || '',
@@ -77,21 +78,22 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
     clientEmailId: row[COL.CLIENT_EMAIL_ID] || '',
     priority: (row[COL.PRIORITY] as Enquiry['priority']) || 'Hot',
     warrantyCheck: (row[COL.WARRANTY_CHECK] as Enquiry['warrantyCheck']) || 'No',
-    warrantyLastDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
+    billDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
     billAttach: row[COL.BILL_ATTACH] || '',
     items: items.length > 0 ? items : [{ itemName: '', modelName: '', qty: 0, partNo: '' }],
     receiverName: row[COL.RECEIVER_NAME] || '',
     createdAt: row[COL.TIMESTAMP] || new Date().toISOString(),
 
-    // Tally ReadOnly Lookups
+    // InvoiceGeneration ReadOnly Lookups
     quotationNumber: row[30] || '', // COL.QUOTATION_NUMBER
+    quotationFile: row[32] || '', // COL.QUOTATION_FILE
     paymentTerm: (row[40] as Enquiry['paymentTerm']) || undefined, // COL.PAYMENT_TERM
     seniorApproval: (row[43] as Enquiry['seniorApproval']) || undefined, // COL.SENIOR_APPROVAL
     seniorName: row[44] || '', // COL.SENIOR_NAME
     machineRepairStatus: (row[48] as Enquiry['machineRepairStatus']) || undefined, // COL.MACHINE_REPAIR_STATUS
     currentPaymentStatus: (row[53] as Enquiry['currentPaymentStatus']) || undefined, // BB
 
-    // Tally Update Fields (BD -> BM)
+    // InvoiceGeneration Update Fields (BD -> BM)
     planned6: row[COL.PLANNED_6] ? String(row[COL.PLANNED_6]).trim() : '',
     actual6: row[COL.ACTUAL_6] ? String(row[COL.ACTUAL_6]).trim() : '',
     delay6: row[COL.DELAY_6] ? String(row[COL.DELAY_6]).trim() : '',
@@ -101,13 +103,13 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
     spareInvoiceFile: row[COL.SPARE_INVOICE_FILE] || '',
     serviceInvoiceNo: row[COL.SERVICE_INVOICE_NO] || '',
     serviceInvoiceFile: row[COL.SERVICE_INVOICE_FILE] || '',
-    tallyRemarks: row[COL.TALLY_REMARKS] || '',
+    InvoiceGenerationRemarks: row[COL.InvoiceGeneration_REMARKS] || '',
 
     rowIndex,
   };
 }
 
-export default function Tally() {
+export default function InvoiceGeneration() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +129,7 @@ export default function Tally() {
     spareInvoiceFile: string;
     serviceInvoiceNo: string;
     serviceInvoiceFile: string;
-    tallyRemarks: string;
+    InvoiceGenerationRemarks: string;
   }>({
     invoicePlanDate: '',
     invoicePostedBy: '',
@@ -135,29 +137,43 @@ export default function Tally() {
     spareInvoiceFile: '',
     serviceInvoiceNo: '',
     serviceInvoiceFile: '',
-    tallyRemarks: '',
+    InvoiceGenerationRemarks: '',
   });
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [rows, dropdownRows] = await Promise.all([
+      const [rows, dropdownRows, followUpRows] = await Promise.all([
         fetchSheet(SHEET_NAME),
         fetchSheet('Master-Dropdown').catch(() => []),
+        fetchSheet('Follow-Up').catch(() => []),
       ]);
 
       const headerIndex = rows.findIndex(
-        (row: any[]) => String(row[COL.INDENT_NUMBER]).trim().toLowerCase() === 'indent number'
+        (row: any[]) => String(row[COL.ENTRY_NO]).trim().toLowerCase() === 'entry no.'
       );
       const startIndex = headerIndex >= 0 ? headerIndex + 1 : DATA_START_INDEX;
 
+      const clientApprovalMap = new Map<string, string>();
+      for (let i = followUpRows.length - 1; i >= 1; i--) {
+        const entryId = followUpRows[i][2]; // Col C
+        const clientApproval = String(followUpRows[i][11] || '').trim(); // Col L
+        if (entryId && clientApproval && !clientApprovalMap.has(String(entryId))) {
+          clientApprovalMap.set(String(entryId), clientApproval);
+        }
+      }
+
       const parsed = rows
-        .map((row, index) => rowToEnquiry(row, index + 1))
+        .map((row, index) => {
+          const enq = rowToEnquiry(row, index + 1);
+          enq.clientApprovalFile = clientApprovalMap.get(enq.id) || '';
+          return enq;
+        })
         .slice(startIndex)
         .filter(enq => {
-          const indentId = enq.id;
-          if (!indentId || !indentId.startsWith('IN-')) return false;
+          const entryId = enq.id;
+          if (!entryId || !entryId.startsWith('IN-')) return false;
           const planned6 = enq.planned6;
           return (planned6 && planned6.length > 0);
         });
@@ -214,7 +230,7 @@ export default function Tally() {
       newData[COL.INVOICE_POSTED_BY] = formData.invoicePostedBy; // BH
       newData[COL.SPARE_INVOICE_NO] = formData.spareInvoiceNo; // BI
       newData[COL.SERVICE_INVOICE_NO] = formData.serviceInvoiceNo; // BK
-      newData[COL.TALLY_REMARKS] = formData.tallyRemarks; // BM
+      newData[COL.InvoiceGeneration_REMARKS] = formData.InvoiceGenerationRemarks; // BM
 
       // Handle Files Concurrently
       const uploadPromises: Promise<void>[] = [];
@@ -264,7 +280,7 @@ export default function Tally() {
               spareInvoiceFile: newData[COL.SPARE_INVOICE_FILE],
               serviceInvoiceNo: formData.serviceInvoiceNo,
               serviceInvoiceFile: newData[COL.SERVICE_INVOICE_FILE],
-              tallyRemarks: formData.tallyRemarks,
+              InvoiceGenerationRemarks: formData.InvoiceGenerationRemarks,
             }
             : enq
         )
@@ -274,7 +290,7 @@ export default function Tally() {
       setSelectedEnquiry(null);
       resetForm();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update Tally');
+      setError(err instanceof Error ? err.message : 'Failed to update InvoiceGeneration');
     } finally {
       setSubmitting(false);
     }
@@ -288,7 +304,7 @@ export default function Tally() {
       spareInvoiceFile: '',
       serviceInvoiceNo: '',
       serviceInvoiceFile: '',
-      tallyRemarks: '',
+      InvoiceGenerationRemarks: '',
     });
   }, []);
 
@@ -301,7 +317,7 @@ export default function Tally() {
       spareInvoiceFile: enquiry.spareInvoiceFile || '',
       serviceInvoiceNo: enquiry.serviceInvoiceNo || '',
       serviceInvoiceFile: enquiry.serviceInvoiceFile || '',
-      tallyRemarks: enquiry.tallyRemarks || '',
+      InvoiceGenerationRemarks: enquiry.InvoiceGenerationRemarks || '',
     });
     setShowModal(true);
   }, []);
@@ -364,7 +380,7 @@ export default function Tally() {
 
   return (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Tally</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Invoice Generation</h1>
 
       <div className="bg-white rounded-lg shadow-md mb-6 p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -455,7 +471,7 @@ export default function Tally() {
       {loading ? (
         <div className="flex items-center justify-center py-16 gap-3 text-gray-500">
           <Loader2 size={22} className="animate-spin" />
-          <span>Loading Tally logs...</span>
+          <span>Loading InvoiceGeneration logs...</span>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -463,7 +479,7 @@ export default function Tally() {
           <div className="md:hidden">
             {(activeTab === 'pending' ? filteredPending : filteredHistory).length === 0 ? (
               <div className="p-8 text-center text-gray-500">
-                No {activeTab} tally records found.
+                No {activeTab} InvoiceGeneration records found.
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
@@ -523,9 +539,9 @@ export default function Tally() {
                           <span>{enquiry.invoicePostedBy}</span>
                         </div>
 
-                        {enquiry.tallyRemarks && (
+                        {enquiry.InvoiceGenerationRemarks && (
                           <p className="text-gray-600 italic text-xs pt-2 border-t border-gray-200 text-left mt-2">
-                            Remark: "{enquiry.tallyRemarks}"
+                            Remark: "{enquiry.InvoiceGenerationRemarks}"
                           </p>
                         )}
                       </div>
@@ -557,17 +573,19 @@ export default function Tally() {
               <thead className="bg-gray-50">
                 <tr>
                   {activeTab === 'pending' && <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Action</th>}
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Indent Number</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Entry No.</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Client Type</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Company Name</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Contact Person</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Contact Number</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Quotation No</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Quotation Copy</th>
                   {activeTab === 'pending' && (
                     <>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Payment Term</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Senior Approval</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Senior Name</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Payment Mode</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Client Approval</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Machine Repair</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Payment Status</th>
                     </>
@@ -607,11 +625,25 @@ export default function Tally() {
                     <td className="px-4 py-3">{enquiry.contactPersonName}</td>
                     <td className="px-4 py-3">{enquiry.contactPersonNumber}</td>
                     <td className="px-4 py-3">{enquiry.quotationNumber}</td>
+                    <td className="px-4 py-3">
+                      {enquiry.quotationFile ? (
+                        <a href={enquiry.quotationFile} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                          <Download size={14} /> View
+                        </a>
+                      ) : '-'}
+                    </td>
                     {activeTab === 'pending' && (
                       <>
                         <td className="px-4 py-3">{enquiry.paymentTerm || '-'}</td>
                         <td className="px-4 py-3">{enquiry.seniorApproval || '-'}</td>
                         <td className="px-4 py-3">{enquiry.seniorName || '-'}</td>
+                        <td className="px-4 py-3">
+                          {enquiry.clientApprovalFile ? (
+                            <a href={enquiry.clientApprovalFile} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                              <Download size={14} /> View
+                            </a>
+                          ) : '-'}
+                        </td>
                         <td className="px-4 py-3">{enquiry.machineRepairStatus}</td>
                         <td className="px-4 py-3">{enquiry.currentPaymentStatus}</td>
                       </>
@@ -643,15 +675,15 @@ export default function Tally() {
                             </a>
                           ) : '-'}
                         </td>
-                        <td className="px-4 py-3 max-w-xs truncate" title={enquiry.tallyRemarks}>{enquiry.tallyRemarks || '-'}</td>
+                        <td className="px-4 py-3 max-w-xs truncate" title={enquiry.InvoiceGenerationRemarks}>{enquiry.InvoiceGenerationRemarks || '-'}</td>
                       </>
                     )}
                   </tr>
                 ))}
                 {(activeTab === 'pending' ? filteredPending : filteredHistory).length === 0 && (
                   <tr>
-                    <td colSpan={activeTab === 'pending' ? 12 : 17} className="px-4 py-8 text-center text-gray-500">
-                      No {activeTab} tally records found.
+                    <td colSpan={activeTab === 'pending' ? 14 : 16} className="px-4 py-8 text-center text-gray-500">
+                      No {activeTab} InvoiceGeneration records found.
                     </td>
                   </tr>
                 )}
@@ -665,7 +697,7 @@ export default function Tally() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg shrink-0">
-              <h2 className="text-xl font-bold">Process Tally</h2>
+              <h2 className="text-xl font-bold">Process InvoiceGeneration</h2>
               <button onClick={() => setShowModal(false)} className="hover:text-gray-200">
                 <X size={24} />
               </button>
@@ -675,7 +707,7 @@ export default function Tally() {
               <div className="space-y-4 mb-6 shrink-0">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Indent Number:</span>
+                    <span className="font-medium text-gray-700">Entry No.:</span>
                     <p className="text-gray-900">{selectedEnquiry.id}</p>
                   </div>
                   <div>
@@ -777,11 +809,11 @@ export default function Tally() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Remarks</label>
                   <textarea
-                    value={formData.tallyRemarks}
-                    onChange={(e) => setFormData({ ...formData, tallyRemarks: e.target.value })}
+                    value={formData.InvoiceGenerationRemarks}
+                    onChange={(e) => setFormData({ ...formData, InvoiceGenerationRemarks: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     rows={3}
-                    placeholder="Enter any tally remarks..."
+                    placeholder="Enter any InvoiceGeneration remarks..."
                   ></textarea>
                 </div>
               </div>
@@ -803,7 +835,7 @@ export default function Tally() {
                   disabled={submitting}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Saving...' : 'Save Tally'}
+                  {submitting ? 'Saving...' : 'Save InvoiceGeneration'}
                 </button>
               </div>
             </form>

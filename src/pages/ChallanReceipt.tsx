@@ -10,7 +10,7 @@ const DATA_START_INDEX = 7;
 // Column indices (0-based)
 const COL = {
   TIMESTAMP: 0,
-  INDENT_NUMBER: 1,
+  ENTRY_NO: 1,
   ENQUIRY_TYPE: 2,
   CLIENT_TYPE: 3,
   COMPANY_NAME: 4,
@@ -67,7 +67,7 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
 
   return {
     rowIndex, // 1-based index in the sheet
-    id: row[COL.INDENT_NUMBER],
+    id: row[COL.ENTRY_NO],
     enquiryType: (row[COL.ENQUIRY_TYPE] as Enquiry['enquiryType']) || 'Sales',
     clientType: (row[COL.CLIENT_TYPE] as Enquiry['clientType']) || 'New',
     companyName: row[COL.COMPANY_NAME] ?? '',
@@ -79,7 +79,7 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
     clientEmailId: row[COL.CLIENT_EMAIL_ID] ?? '',
     priority: (row[COL.PRIORITY] as Enquiry['priority']) || 'Hot',
     warrantyCheck: (row[COL.WARRANTY_CHECK] as Enquiry['warrantyCheck']) || 'No',
-    warrantyLastDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
+    billDate: row[COL.WARRANTY_LAST_DATE] ? String(row[COL.WARRANTY_LAST_DATE]) : '',
     billAttach: row[COL.BILL_ATTACH] ?? '',
     items: items.length > 0 ? items : [{ id: '1', itemName: '', modelName: '', qty: 0, partNo: '' }],
     receiverName: row[COL.RECEIVER_NAME] ?? '',
@@ -136,7 +136,7 @@ export default function ChallanReceipt() {
       const rows = await fetchSheet(SHEET_NAME);
 
       const headerIndex = rows.findIndex(
-        row => String(row[COL.INDENT_NUMBER]).trim().toLowerCase() === 'indent number'
+        row => String(row[COL.ENTRY_NO]).trim().toLowerCase() === 'entry no.'
       );
       const startIndex = headerIndex >= 0 ? headerIndex + 1 : DATA_START_INDEX;
 
@@ -144,7 +144,7 @@ export default function ChallanReceipt() {
       const parsed: Enquiry[] = [];
       for (let i = startIndex; i < rows.length; i++) {
         const row = rows[i];
-        if (row[COL.INDENT_NUMBER] && String(row[COL.INDENT_NUMBER]).startsWith('IN-')) {
+        if (row[COL.ENTRY_NO] && String(row[COL.ENTRY_NO]).startsWith('IN-')) {
           const enq = rowToEnquiry(row, i + 1);
           enq.rawRow = row; // Attach the original row data back to the entity
           // Only Service or Both fall into Challan Receipt
@@ -520,7 +520,7 @@ export default function ChallanReceipt() {
                 <thead className="bg-gray-50">
                   <tr>
                     {activeTab === 'pending' && <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Action</th>}
-                    <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Indent Number</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Entry No.</th>
                     {/* The new Date columns */}
                     {activeTab === 'pending' && <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Planned Date</th>}
                     {activeTab === 'history' && <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Actual Date</th>}
@@ -630,7 +630,7 @@ export default function ChallanReceipt() {
                             </span>
                           </td>
                           <td className="px-4 py-3">{enquiry.warrantyCheck}</td>
-                          <td className="px-4 py-3">{enquiry.warrantyLastDate ? enquiry.warrantyLastDate.slice(0, 10) : '-'}</td>
+                          <td className="px-4 py-3">{enquiry.billDate ? enquiry.billDate.slice(0, 10) : '-'}</td>
                         </>
                       )}
                     </tr>
@@ -679,7 +679,7 @@ export default function ChallanReceipt() {
               <div className="space-y-4 mb-6">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Indent Number:</span>
+                    <span className="font-medium text-gray-700">Entry No.:</span>
                     <p className="text-gray-900">{selectedEnquiry.id}</p>
                   </div>
                   <div>

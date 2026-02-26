@@ -9,7 +9,7 @@ import Quotation from './pages/Quotation';
 import FollowUp from './pages/FollowUp';
 import RepairStatus from './pages/RepairStatus';
 import PaymentStatus from './pages/PaymentStatus';
-import Tally from './pages/Tally';
+import InvoiceGeneration from './pages/InvoiceGeneration';
 import Handover from './pages/Handover';
 import Feedback from './pages/Feedback';
 import Dashboard from './pages/Dashboard';
@@ -38,8 +38,8 @@ function AppContent() {
         return <RepairStatus />;
       case 'paymentstatus':
         return <PaymentStatus />;
-      case 'tally':
-        return <Tally />;
+      case 'InvoiceGeneration':
+        return <InvoiceGeneration />;
       case 'handover':
         return <Handover />;
       case 'feedback':

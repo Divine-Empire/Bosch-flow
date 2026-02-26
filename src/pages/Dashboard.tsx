@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
-import { 
-  FileText, 
-  Receipt, 
-  TrendingUp, 
-  Users, 
-  Wrench, 
-  Truck, 
-  CheckCircle, 
-  AlertCircle, 
-  Briefcase, 
+import {
+  FileText,
+  Receipt,
+  TrendingUp,
+  Users,
+  Wrench,
+  Truck,
+  CheckCircle,
+  AlertCircle,
+  Briefcase,
   CreditCard,
   ClipboardList,
-  Activity, 
+  Activity,
   Package
 } from 'lucide-react';
 import { storage } from '../utils/storage';
@@ -24,23 +24,23 @@ export default function Dashboard() {
     hotPriority: 0,
     activeRepairs: 0,
     pendingPayments: 0,
-    
+
     // Service
     pendingChallans: 0,
     machinesUnderRepair: 0,
     readyForHandover: 0,
     feedbackPending: 0,
-    
+
     // Commercial
     pendingQuotations: 0,
     pendingPO: 0, // Order not received yet
-    tallyPending: 0, // Invoice not posted
+    InvoiceGenerationPending: 0, // Invoice not posted
     completedSales: 0
   });
 
   useEffect(() => {
     const enquiries = storage.getEnquiries();
-    
+
     // Filter helpers
     const serviceEnquiries = enquiries.filter(e => e.enquiryType === 'Service' || e.enquiryType === 'Both');
     // const salesEnquiries = enquiries.filter(e => e.enquiryType === 'Sales' || e.enquiryType === 'Both');
@@ -48,39 +48,39 @@ export default function Dashboard() {
     // Calculations
     const totalEnquiries = enquiries.length;
     const hotPriority = enquiries.filter(e => e.priority === 'Hot').length;
-    
+
     // Active Repairs: Machines received but not yet marked repair complete
-    const activeRepairs = serviceEnquiries.filter(e => 
+    const activeRepairs = serviceEnquiries.filter(e =>
       e.machineReceived === 'Yes' && e.machineRepairStatus !== 'Complete'
     ).length;
 
     // Pending Payments: Payment not complete
     // For Service: repair complete but payment pending
     // For Sales: just payment pending (assuming sales implies immediate payment need)
-    const pendingPayments = enquiries.filter(e => 
+    const pendingPayments = enquiries.filter(e =>
       e.currentPaymentStatus !== 'Complete'
     ).length;
 
     // Service Metrics
     const pendingChallans = serviceEnquiries.filter(e => !e.machineReceived || e.machineReceived === 'No').length;
     const machinesUnderRepair = activeRepairs; // Same definition
-    const readyForHandover = serviceEnquiries.filter(e => 
+    const readyForHandover = serviceEnquiries.filter(e =>
       e.machineRepairStatus === 'Complete' && e.currentPaymentStatus === 'Complete' && e.handoverStatus !== 'Complete'
     ).length;
-    const feedbackPending = serviceEnquiries.filter(e => 
+    const feedbackPending = serviceEnquiries.filter(e =>
       e.handoverStatus === 'Complete' && e.feedbackStatus !== 'Complete'
     ).length;
 
     // Commercial Metrics
     const pendingQuotations = enquiries.filter(e => !e.quotationNumber).length;
-    const pendingPO = enquiries.filter(e => 
+    const pendingPO = enquiries.filter(e =>
       e.quotationNumber && e.followUpStatus !== 'Order Received'
     ).length;
-    const tallyPending = enquiries.filter(e => 
-      (e.followUpStatus === 'Order Received' || e.machineRepairStatus === 'Complete') && 
+    const InvoiceGenerationPending = enquiries.filter(e =>
+      (e.followUpStatus === 'Order Received' || e.machineRepairStatus === 'Complete') &&
       !e.serviceInvoiceNo && !e.spareInvoiceNo
     ).length;
-    const completedSales = enquiries.filter(e => 
+    const completedSales = enquiries.filter(e =>
       e.currentPaymentStatus === 'Complete' && (e.enquiryType === 'Sales' || e.enquiryType === 'Both')
     ).length;
 
@@ -95,7 +95,7 @@ export default function Dashboard() {
       feedbackPending,
       pendingQuotations,
       pendingPO,
-      tallyPending,
+      InvoiceGenerationPending,
       completedSales
     });
   }, []);
@@ -119,30 +119,27 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">System Dashboard</h1>
-        
+
         {/* Tab Navigation */}
         <div className="bg-white p-1 rounded-lg shadow-sm border border-gray-200 inline-flex">
-          <button 
+          <button
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'overview' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'overview' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             Overview
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('service')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'service' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'service' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             Service Operations
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('commercial')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'commercial' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'commercial' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             Commercial
           </button>
@@ -173,10 +170,10 @@ export default function Dashboard() {
                   <span className="text-blue-600 font-medium">Upload Challan</span>
                 </div>
                 <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors text-center">
-                   <span className="text-blue-600 font-medium">Generate Quote</span>
+                  <span className="text-blue-600 font-medium">Generate Quote</span>
                 </div>
                 <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors text-center">
-                   <span className="text-blue-600 font-medium">Record Payment</span>
+                  <span className="text-blue-600 font-medium">Record Payment</span>
                 </div>
               </div>
             </div>
@@ -196,7 +193,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-300">
             {renderCard('Pending Quotes', stats.pendingQuotations, FileText, 'bg-indigo-500', 'Enquiries without quotation')}
             {renderCard('Awaiting PO', stats.pendingPO, Receipt, 'bg-cyan-500', 'Quote sent, order pending')}
-            {renderCard('Tally Pending', stats.tallyPending, CreditCard, 'bg-orange-600', 'Invoice not posted in Tally')}
+            {renderCard('InvoiceGeneration Pending', stats.InvoiceGenerationPending, CreditCard, 'bg-orange-600', 'Invoice not posted in InvoiceGeneration')}
             {renderCard('Closed Sales', stats.completedSales, Package, 'bg-teal-500', 'Successfully completed sales')}
           </div>
         )}
