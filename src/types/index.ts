@@ -44,6 +44,7 @@ export interface Enquiry {
   quotationNumber?: string;
   valueBasic?: string;
   gstAmount?: string;
+  enquiryTypeForm?: string; // Col CD
   quotationFile?: string;
   quotationRemarks?: string;
 

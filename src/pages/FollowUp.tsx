@@ -634,7 +634,7 @@ export default function FollowUp() {
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">HO Bill Address</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Quotation No</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">Basic Value</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">GST</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 uppercase">GST Value</th>
 
                   {activeTab === 'pending' && (
                     <>

@@ -45,6 +45,7 @@ const COL = {
   QUOTATION_FILE: 32,
   QUOTATION_REMARKS: 33,
   GST_AMOUNT: 80, // Col CC
+  ENQUIRY_TYPE_FORM: 81, // Col CD
 };
 
 function parseJsonCell(value: string): string[] {
@@ -105,6 +106,7 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
     quotationNumber: row[COL.QUOTATION_NUMBER] || '',
     valueBasic: row[COL.VALUE_BASIC] || '',
     gstAmount: row[COL.GST_AMOUNT] || '',
+    enquiryTypeForm: row[COL.ENQUIRY_TYPE_FORM] || '',
     quotationFile: row[COL.QUOTATION_FILE] || '',
     quotationRemarks: row[COL.QUOTATION_REMARKS] || '',
 
@@ -140,12 +142,14 @@ export default function Quotation() {
     valueBasic: string;
     gstAmount: string;
     quotationRemarks: string;
+    enquiryTypeForm: string;
   }>({
     shareQuestions: '',
     quotationNumber: '',
     valueBasic: '',
     gstAmount: '',
     quotationRemarks: '',
+    enquiryTypeForm: '',
   });
 
   const loadData = useCallback(async () => {
@@ -201,13 +205,14 @@ export default function Quotation() {
       const actualTimestamp = formatTimestamp(new Date());
 
       // 1. Prepare sparse array immediately
-      const rowData = new Array(81).fill('');
+      const rowData = new Array(82).fill('');
       rowData[COL.ACTUAL_2] = actualTimestamp;
       rowData[COL.SHARE_QUESTIONS] = formData.shareQuestions;
       rowData[COL.QUOTATION_NUMBER] = formData.quotationNumber;
       rowData[COL.VALUE_BASIC] = formData.valueBasic;
       rowData[COL.GST_AMOUNT] = formData.gstAmount;
       rowData[COL.QUOTATION_REMARKS] = formData.quotationRemarks;
+      rowData[COL.ENQUIRY_TYPE_FORM] = formData.enquiryTypeForm;
 
       let finalFileUrl = selectedEnquiry.quotationFile || '';
 
@@ -244,6 +249,7 @@ export default function Quotation() {
               quotationNumber: formData.quotationNumber,
               valueBasic: formData.valueBasic,
               gstAmount: formData.gstAmount,
+              enquiryTypeForm: formData.enquiryTypeForm,
               // optimistically use existing URL or assume new one is uploading
               quotationFile: finalFileUrl,
               quotationRemarks: formData.quotationRemarks,
@@ -255,7 +261,7 @@ export default function Quotation() {
       // Close modal instantly
       setShowModal(false);
       setSelectedEnquiry(null);
-      setFormData({ shareQuestions: '', quotationNumber: '', valueBasic: '', gstAmount: '', quotationRemarks: '' });
+      setFormData({ shareQuestions: '', quotationNumber: '', valueBasic: '', gstAmount: '', quotationRemarks: '', enquiryTypeForm: '' });
       setQuotationFileObj(null);
 
       // Wait for background tasks to finish without locking UI
@@ -276,6 +282,7 @@ export default function Quotation() {
       valueBasic: enquiry.valueBasic || '',
       gstAmount: enquiry.gstAmount || '',
       quotationRemarks: enquiry.quotationRemarks || '',
+      enquiryTypeForm: enquiry.enquiryTypeForm || '',
     });
     setQuotationFileObj(null);
     setShowModal(true);
@@ -714,6 +721,23 @@ export default function Quotation() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Enquiry Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.enquiryTypeForm}
+                      onChange={(e) => setFormData({ ...formData, enquiryTypeForm: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Select</option>
+                      <option value="Sales">Sales</option>
+                      <option value="Service">Service</option>
+                      <option value="Both">Both</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Share Questions <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -805,7 +829,7 @@ export default function Quotation() {
                   onClick={() => {
                     setShowModal(false);
                     setSelectedEnquiry(null);
-                    setFormData({ shareQuestions: '', quotationNumber: '', valueBasic: '', gstAmount: '', quotationRemarks: '' });
+                    setFormData({ shareQuestions: '', quotationNumber: '', valueBasic: '', gstAmount: '', quotationRemarks: '', enquiryTypeForm: '' });
                     setQuotationFileObj(null);
                   }}
                   className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
