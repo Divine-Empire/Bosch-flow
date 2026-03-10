@@ -29,11 +29,23 @@ const ConsignorDetails = ({
                     if (updated.length > 0 && dropdownData.references) {
                       const mobileNumbers = updated.map((r) => dropdownData.references[r]?.mobile).filter(Boolean)
                       const phoneNumbers = updated.map((r) => dropdownData.references[r]?.phone).filter(Boolean)
+                      const gstinList = updated.map((r) => dropdownData.references[r]?.gstin).filter(Boolean)
+                      const stateCodes = updated.map((r) => dropdownData.references[r]?.stateCode).filter(Boolean)
+                      const msmeNumbers = updated.map((r) => dropdownData.references[r]?.msmeNumber).filter(Boolean)
+
                       handleInputChange("consignorMobile", mobileNumbers.join(", "))
                       handleInputChange("consignorPhone", phoneNumbers.join(", "))
+
+                      // Autofill GSTIN and State Code from the first selected reference if available
+                      if (gstinList.length > 0) handleInputChange("consignorGSTIN", gstinList[0])
+                      if (stateCodes.length > 0) handleInputChange("consignorStateCode", stateCodes[0])
+                      if (msmeNumbers.length > 0) handleInputChange("msmeNumber", msmeNumbers[0])
                     } else {
                       handleInputChange("consignorMobile", "")
                       handleInputChange("consignorPhone", "")
+                      handleInputChange("consignorGSTIN", "")
+                      handleInputChange("consignorStateCode", "")
+                      handleInputChange("msmeNumber", "")
                     }
                   }}
                   className="ml-1 text-blue-600 hover:text-blue-800"
@@ -56,8 +68,23 @@ const ConsignorDetails = ({
                 if (dropdownData.references && dropdownData.references[selectedRef]) {
                   const mobileNumbers = updated.map((ref) => dropdownData.references[ref]?.mobile).filter(Boolean)
                   const phoneNumbers = updated.map((ref) => dropdownData.references[ref]?.phone).filter(Boolean)
+                  const gstinList = updated.map((ref) => dropdownData.references[ref]?.gstin).filter(Boolean)
+                  const stateCodes = updated.map((ref) => dropdownData.references[ref]?.stateCode).filter(Boolean)
+                  const msmeNumbers = updated.map((ref) => dropdownData.references[ref]?.msmeNumber).filter(Boolean)
+
                   handleInputChange("consignorMobile", mobileNumbers.join(", "))
                   handleInputChange("consignorPhone", phoneNumbers.join(", "))
+
+                  // Autofill GSTIN, State Code, and MSME
+                  if (dropdownData.references[selectedRef].gstin) {
+                    handleInputChange("consignorGSTIN", dropdownData.references[selectedRef].gstin)
+                  }
+                  if (dropdownData.references[selectedRef].stateCode) {
+                    handleInputChange("consignorStateCode", dropdownData.references[selectedRef].stateCode)
+                  }
+                  if (dropdownData.references[selectedRef].msmeNumber) {
+                    handleInputChange("msmeNumber", dropdownData.references[selectedRef].msmeNumber)
+                  }
                 }
               }
               e.target.value = ""
@@ -99,9 +126,8 @@ const ConsignorDetails = ({
             <label className="block text-sm font-medium">Phone</label>
             <input
               type="text"
-              // value={quotationData.consignorPhone}
-              // onChange={(e) => handleInputChange("consignorPhone", e.target.value)}
-              value = "9630060004"
+              value={quotationData.consignorPhone}
+              onChange={(e) => handleInputChange("consignorPhone", e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
             />
           </div>

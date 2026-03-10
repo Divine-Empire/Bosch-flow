@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Search, Download, Loader2 } from 'lucide-react';
 import { Enquiry, Item } from '../types';
 import { fetchSheet, updateRow, uploadFileToDrive } from '../utils/api';
@@ -110,6 +111,7 @@ function rowToEnquiry(row: string[], rowIndex: number): Enquiry {
 }
 
 export default function InvoiceGeneration() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -380,7 +382,15 @@ export default function InvoiceGeneration() {
 
   return (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Invoice Generation</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Invoice Generation</h1>
+        <button
+          onClick={() => navigate('/quotation')}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+        >
+          make Quotation
+        </button>
+      </div>
 
       <div className="bg-white rounded-lg shadow-md mb-6 p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

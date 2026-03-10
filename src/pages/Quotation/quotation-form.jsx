@@ -59,18 +59,13 @@ const QuotationForm = ({
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const dropdownUrl =
-          "https://docs.google.com/spreadsheets/d/1teE4IIdCw7qnQvm_W7xAPgmGgpU13dtYw6y5ui01HHc/gviz/tq?tqx=out:json&sheet=DROPDOWN"
-        const dropdownResponse = await fetch(dropdownUrl)
-        const dropdownText = await dropdownResponse.text()
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbwkvholGxpU6WFQt3i9pzctKXkBHsY-qkeJd8DenMCMANbKHq5rp3ULEV67uGrWhTDoag/exec"
+        console.log("Fetching general dropdown data from:", `${scriptUrl}?sheet=DROPDOWN`)
+        const dropdownResponse = await fetch(`${scriptUrl}?sheet=DROPDOWN`)
+        const result = await dropdownResponse.json()
 
-        const dropdownJsonStart = dropdownText.indexOf("{")
-        const dropdownJsonEnd = dropdownText.lastIndexOf("}") + 1
-        const dropdownJsonData = dropdownText.substring(dropdownJsonStart, dropdownJsonEnd)
-
-        const dropdownData = JSON.parse(dropdownJsonData)
-
-        if (dropdownData && dropdownData.table && dropdownData.table.rows) {
+        if (result.success && result.data) {
+          console.log("General dropdown data (DROPDOWN) received:", result.data.length, "rows")
           const stateOptionsData = ["Select State"]
           const stateDetailsMap = {}
           const preparedByOptionsData = [""]
@@ -79,71 +74,96 @@ const QuotationForm = ({
           const referenceOptionsData = ["Select Reference"]
           const referenceDetailsMap = {}
 
-          dropdownData.table.rows.slice(0).forEach((row) => {
-            if (row.c) {
-              const preparedByName = row.c[79] ? row.c[79].v : ""
-              if (preparedByName && !preparedByOptionsData.includes(preparedByName)) {
+          // result.data is a 2D array [row][col]
+          // Skip header row (index 0)
+          result.data.slice(1).forEach((row) => {
+            if (row) {
+              const preparedByName = row[9] ? String(row[9]).trim() : ""
+              if (preparedByName && preparedByName !== "PREPARED BY" && !preparedByOptionsData.includes(preparedByName)) {
                 preparedByOptionsData.push(preparedByName)
               }
 
-              const stateName = row.c[26] ? row.c[26].v : ""
-              if (stateName && !stateOptionsData.includes(stateName)) {
+              const stateName = row[4] ? String(row[4]).trim() : ""
+              if (stateName && stateName !== "STATE" && !stateOptionsData.includes(stateName)) {
                 stateOptionsData.push(stateName)
 
-                let bankDetails = ""
-                if (row.c[27] && row.c[27].v) {
-                  bankDetails = row.c[27].v
-                }
+                let bankDetails = row[10] || ""
 
-                const pan = row.c[25] ? row.c[25].v : ""
-                const msmeNumber = row.c[33] ? row.c[33].v : ""
+                const pan = row[11] || ""
+                const msmeNumber = row[12] || ""
 
                 stateDetailsMap[stateName] = {
                   bankDetails: bankDetails,
-                  consignerAddress: row.c[28] ? row.c[28].v : "",
-                  stateCode: row.c[30] ? row.c[30].v : "",
-                  gstin: row.c[31] ? row.c[31].v : "",
+                  consignerAddress: row[28] || "",
+                  stateCode: row[18] || "",
+                  gstin: row[17] || "",
                   pan: pan,
                   msmeNumber: msmeNumber,
                 }
               }
 
-              const companyName = row.c[12] ? row.c[12].v : ""
-              if (companyName && !companyOptionsData.includes(companyName)) {
+              // Column A is index 0 (for Company Name)
+              const companyName = row[0] ? String(row[0]).trim() : ""
+              if (companyName && companyName !== "Company Name" && !companyOptionsData.includes(companyName)) {
                 companyOptionsData.push(companyName)
 
                 companyDetailsMap[companyName] = {
-                  address: row.c[15] ? row.c[15].v : "",
-                  state: row.c[16] ? row.c[16].v : "",
-                  contactName: row.c[13] ? row.c[13].v : "",
-                  contactNo: row.c[14] ? row.c[14].v : "",
-                  gstin: row.c[17] ? row.c[17].v : "",
-                  stateCode: row.c[18] ? row.c[18].v : "",
+                  contactName: row[13] ? String(row[13]).trim() : "", // Column N (index 13)
+                  contactNo: row[14] ? String(row[14]).trim() : "",   // Column O (index 14)
+                  address: row[15] ? String(row[15]).trim() : "",     // Column P (index 15)
+                  state: row[16] ? String(row[16]).trim() : "",       // Column Q (index 16)
+                  gstin: row[17] ? String(row[17]).trim() : "",       // Column R (index 17)
+                  stateCode: row[18] ? String(row[18]).trim() : "",   // Column S (index 18)
+                  msmeNumber: row[12] ? String(row[12]).trim() : "",  // Column M (index 12)
                 }
               }
 
-              const referenceName = row.c[21] ? row.c[21].v : ""
-              if (referenceName && !referenceOptionsData.includes(referenceName)) {
+              const referenceName = row[1] ? String(row[1]).trim() : ""
+              if (referenceName && referenceName !== "REFERENCE" && !referenceOptionsData.includes(referenceName)) {
                 referenceOptionsData.push(referenceName)
 
                 referenceDetailsMap[referenceName] = {
-                  mobile: row.c[22] ? row.c[22].v : "",
-                  phone: row.c[83] ? row.c[83].v : "",
+                  mobile: row[2] || "",
+                  phone: row[3] || "",
+                  gstin: row[17] || "",     // Column R (index 17)
+                  stateCode: row[18] || "", // Column S (index 18)
+                  msmeNumber: row[12] || "", // Column M (index 12)
                 }
               }
             }
           })
 
           setStateOptions(stateOptionsData)
-          setCompanyOptions(companyOptionsData)
-          setReferenceOptions(referenceOptionsData)
           setPreparedByOptions(preparedByOptionsData)
-
-          setDropdownData({
+          setReferenceOptions(referenceOptionsData)
+          setCompanyOptions(companyOptionsData) // Add this to correctly populate company options
+          setDropdownData((prev) => ({
+            ...prev,
             states: stateDetailsMap,
-            companies: companyDetailsMap,
             references: referenceDetailsMap,
-          })
+            companies: companyDetailsMap, // Add this to enable autofill
+          }))
+
+          // NEW: Fetch company names from Indent sheet Column E (index 4)
+          console.log("Fetching company names from Indent sheet...")
+          const indentCompanyResponse = await fetch(`${scriptUrl}?sheet=Indent`)
+          const indentCompanyResult = await indentCompanyResponse.json()
+
+          if (indentCompanyResult.success && indentCompanyResult.data) {
+            const indentCompanyOptions = ["Select Company"]
+            indentCompanyResult.data.slice(1).forEach((row) => {
+              if (row && row[4]) {
+                const companyName = String(row[4]).trim()
+                if (companyName && companyName !== "Company Name" && companyName !== "Customer Name" && !indentCompanyOptions.includes(companyName)) {
+                  indentCompanyOptions.push(companyName)
+                }
+              }
+            })
+            setCompanyOptions(indentCompanyOptions)
+            console.log("Company options updated from Indent sheet. Count:", indentCompanyOptions.length)
+          }
+
+          console.log("General dropdown states updated.")
         }
       } catch (error) {
         console.error("Error fetching dropdown data:", error)
@@ -184,99 +204,40 @@ const QuotationForm = ({
     fetchDropdownData()
   }, [])
 
-  // NEW: Fetch lead numbers from both sheets with filtering conditions
+  // NEW: Fetch lead numbers from three sheets with filtering conditions
   useEffect(() => {
     const fetchLeadNumbers = async () => {
       try {
         const leadNoOptionsData = ["Select Lead No."]
         const leadNoDataMap = {}
 
-        // Fetch from FMS sheet
-        const fmsUrl =
-          "https://docs.google.com/spreadsheets/d/1teE4IIdCw7qnQvm_W7xAPgmGgpU13dtYw6y5ui01HHc/gviz/tq?tqx=out:json&sheet=Ticket_Enquiry"
-        const fmsResponse = await fetch(fmsUrl)
-        const fmsText = await fmsResponse.text()
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbwkvholGxpU6WFQt3i9pzctKXkBHsY-qkeJd8DenMCMANbKHq5rp3ULEV67uGrWhTDoag/exec"
 
-        const fmsJsonStart = fmsText.indexOf("{")
-        const fmsJsonEnd = fmsText.lastIndexOf("}") + 1
-        const fmsJsonData = fmsText.substring(fmsJsonStart, fmsJsonEnd)
-        const fmsData = JSON.parse(fmsJsonData)
+        // NEW: Fetch from Indent sheet
+        const indentResponse = await fetch(`${scriptUrl}?sheet=Indent`)
+        const indentResult = await indentResponse.json()
 
-        if (fmsData && fmsData.table && fmsData.table.rows) {
-          fmsData.table.rows.forEach((row) => {
-            if (row.c && row.c[1]) {
+        if (indentResult.success && indentResult.data) {
+          // Skip header row
+          indentResult.data.slice(1).forEach((row) => {
+            if (row && row[1]) {
               // Column B (index 1)
-              const leadNo = safeToString(row.c[1].v)
+              const leadNo = String(row[1]).trim()
 
-              // Check filtering conditions: BA (index 52) is not null and BB (index 53) is null
-              const baValue = row.c[52] ? safeToString(row.c[52].v) : ""
-              const bbValue = row.c[53] ? safeToString(row.c[53].v) : ""
-
-              if (leadNo && !leadNoOptionsData.includes(leadNo) && baValue !== "" && bbValue === "") {
+              if (leadNo && leadNo !== "null" && leadNo !== "undefined" && leadNo !== "Indent No" && !leadNoOptionsData.includes(leadNo)) {
                 leadNoOptionsData.push(leadNo)
 
+                // For Indent sheet, we might not have all the mapping yet, but we store what's possible
                 leadNoDataMap[leadNo] = {
-                  sheet: "FMS",
-                  companyName: row.c[23] ? safeToString(row.c[23].v) : "", // Column D
-                  address: row.c[24] ? safeToString(row.c[24].v) : "", // Column G
-                  state: row.c[26] ? safeToString(row.c[26].v) : "", // Column N
-                  contactName: row.c[2] ? safeToString(row.c[2].v) : "", // Column F
-                  contactNo: row.c[3] ? safeToString(row.c[3].v) : "", // Column E
-                  gstin: row.c[27] ? safeToString(row.c[27].v) : "", // Column L
-                  shipTo: row.c[25] ? safeToString(row.c[25].v) : "", // Column I
-                  rowData: row.c, // Store full row data for items
-                }
-              }
-            }
-          })
-        }
-
-        // Fetch from ENQUIRY TO ORDER sheet
-        const enquiryUrl =
-          "https://docs.google.com/spreadsheets/d/1teE4IIdCw7qnQvm_W7xAPgmGgpU13dtYw6y5ui01HHc/gviz/tq?tqx=out:json&sheet=Ticket_Enquiry"
-
-        const enquiryResponse = await fetch(enquiryUrl)
-        const enquiryText = await enquiryResponse.text()
-
-        const enquiryJsonStart = enquiryText.indexOf("{")
-        const enquiryJsonEnd = enquiryText.lastIndexOf("}") + 1
-        const enquiryJsonData = enquiryText.substring(enquiryJsonStart, enquiryJsonEnd)
-        const enquiryData = JSON.parse(enquiryJsonData)
-
-        if (enquiryData && enquiryData.table && enquiryData.table.rows) {
-          enquiryData.table.rows.slice(4).forEach((row) => {
-            if (row.c && row.c[1]) {
-              // Column B (index 1)
-              const leadNo = safeToString(row.c[1].v)
-
-              // Check filtering conditions: AL (index 37) is not null and AM (index 38) is null
-              const alValue = row.c[37] ? safeToString(row.c[37].v) : ""
-              const amValue = row.c[38] ? safeToString(row.c[38].v) : ""
-
-              if (leadNo && !leadNoOptionsData.includes(leadNo)) {
-                leadNoOptionsData.push(leadNo)
-
-                leadNoDataMap[leadNo] = {
-                  sheet: "ENQUIRY",
-                  // companyName: row.c[3] ? safeToString(row.c[3].v) : "", // Column D
-                  // address: row.c[6] ? safeToString(row.c[6].v) : "", // Column G
-                  // state: row.c[13] ? safeToString(row.c[13].v) : "", // Column N
-                  // contactName: row.c[5] ? safeToString(row.c[5].v) : "", // Column F
-                  // contactNo: row.c[4] ? safeToString(row.c[4].v) : "", // Column E
-                  // gstin: row.c[11] ? safeToString(row.c[11].v) : "", // Column L
-                  // shipTo: row.c[8] ? safeToString(row.c[8].v) : "", // Column I
-                  // rowData: row.c, // Store full row data for items
-
-
-
-                  companyName: row.c[23] ? safeToString(row.c[23].v) : "", // Column D
-                  address: row.c[24] ? safeToString(row.c[24].v) : "", // Column G
-                  state: row.c[26] ? safeToString(row.c[26].v) : "", // Column N
-                  contactName: row.c[2] ? safeToString(row.c[2].v) : "", // Column F
-                  contactNo: row.c[3] ? safeToString(row.c[3].v) : "", // Column E
-                  gstin: row.c[27] ? safeToString(row.c[27].v) : "", // Column L
-                  shipTo: row.c[25] ? safeToString(row.c[25].v) : "", // Column I
-                  rowData: row.c, // Store full row data for items
+                  sheet: "Indent",
+                  companyName: row[3] ? String(row[3]) : "", // Assuming column D or similar for company
+                  address: "",
+                  state: "",
+                  contactName: "",
+                  contactNo: "",
+                  gstin: "",
+                  shipTo: "",
+                  rowData: row,
                 }
               }
             }
@@ -302,61 +263,61 @@ const QuotationForm = ({
   useEffect(() => {
     const fetchProductData = async () => {
       try {
-        const dropdownUrl =
-          "https://docs.google.com/spreadsheets/d/1teE4IIdCw7qnQvm_W7xAPgmGgpU13dtYw6y5ui01HHc/gviz/tq?tqx=out:json&sheet=DROPDOWN"
-        const response = await fetch(dropdownUrl)
-        const text = await response.text()
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbwkvholGxpU6WFQt3i9pzctKXkBHsY-qkeJd8DenMCMANbKHq5rp3ULEV67uGrWhTDoag/exec"
+        console.log("Fetching product data (DROPDOWN) from Apps Script...")
+        const response = await fetch(`${scriptUrl}?sheet=DROPDOWN`)
+        const result = await response.json()
 
-        const jsonStart = text.indexOf("{")
-        const jsonEnd = text.lastIndexOf("}") + 1
-        const jsonData = JSON.parse(text.substring(jsonStart, jsonEnd))
+        if (result.success && result.data) {
+          console.log("Product data (DROPDOWN) received:", result.data.length, "rows")
+          const codes = ["Select Code"]
+          const names = ["Select Product"]
+          const productDataMap = {}
 
-        const codes = ["Select Code"]
-        const names = ["Select Product"]
-        const productDataMap = {}
+          // result.data is a 2D array
+          result.data.slice(1).forEach((row) => {
+            if (row) {
+              // F is index 5 (Code)
+              // G is index 6 (Product Name)
+              // H is index 7 (Rate)
+              // I is index 8 (Description)
+              const code = row[5] ? String(row[5]).trim() : ""
+              const name = row[6] ? String(row[6]).trim() : ""
+              const description = row[8] ? String(row[8]).trim() : ""
+              const rate = row[7] ? Number.parseFloat(String(row[7]).replace(/[^0-9.]/g, "")) || 0 : 0
 
-        if (jsonData && jsonData.table && jsonData.table.rows) {
-          jsonData.table.rows.forEach((row) => {
-            if (row.c && row.c[60] && row.c[62]) {
-              const code = row.c[60].v
-              const name = row.c[62].v
-              const description = row.c[78] ? row.c[78].v : ""
-              const rate = row.c[77] ? row.c[77].v : 0
-
-              if (code && !codes.includes(code)) {
+              if (code && code !== "ITEM CODE" && code !== "Code" && !codes.includes(code)) {
                 codes.push(code)
+                productDataMap[code] = {
+                  code: code,
+                  name: name,
+                  description: description,
+                  rate: rate,
+                }
               }
 
-              if (name && !names.includes(name)) {
+              if (name && name !== "ITEM NAME" && name !== "Product Name" && !names.includes(name)) {
                 names.push(name)
-              }
-
-              productDataMap[code] = {
-                name: name,
-                description: description,
-                rate: rate,
-              }
-
-              productDataMap[name] = {
-                code: code,
-                description: description,
-                rate: rate,
+                // Also map by name for full product info retrieval
+                if (!productDataMap[name]) {
+                  productDataMap[name] = {
+                    code: code,
+                    name: name,
+                    description: description,
+                    rate: rate,
+                  }
+                }
               }
             }
           })
-        }
 
-        setProductCodes(codes)
-        setProductNames(names)
-        setProductData(productDataMap)
+          setProductCodes(codes)
+          setProductNames(names)
+          setProductData(productDataMap)
+          console.log("Product states updated. Codes count:", codes.length)
+        }
       } catch (error) {
         console.error("Error fetching product data:", error)
-        setProductCodes(["Select Code", "CODE1", "CODE2", "CODE3"])
-        setProductNames(["Select Product", "Product 1", "Product 2", "Product 3"])
-        setProductData({
-          CODE1: { name: "Product 1", description: "Description 1", rate: 100 },
-          "Product 1": { code: "CODE1", description: "Description 1", rate: 100 },
-        })
       }
     }
 
@@ -424,34 +385,9 @@ const QuotationForm = ({
 
     // CRITICAL: Get company prefix and update quotation number based on company name
     try {
-      // const companyPrefix = await getCompanyPrefix(companyName)
-      // const newQuotationNumber = await getNextQuotationNumber(companyPrefix)
-
-      // handleInputChange("quotationNo", newQuotationNumber)
-
-
-
       const companyPrefix = await getCompanyPrefix(companyName)
-
-      // NEW: Use the new function
-      const scriptUrl = "https://script.google.com/macros/s/AKfycbwu7wzvou_bj7zZvM1q5NCzTgHMaO6WMZVswb3aNG8VJ42Jz1W_sAd4El42tgmg3JKC/exec"
-      const response = await fetch(scriptUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          action: "getNextQuotationNumberNew",
-          companyPrefix: companyPrefix
-        }),
-      })
-
-      const result = await response.json()
-      if (result.success) {
-        handleInputChange("quotationNo", result.nextQuotationNumber)
-      }
-
-
+      const newQuotationNumber = await getNextQuotationNumber(companyPrefix)
+      handleInputChange("quotationNo", newQuotationNumber)
     } catch (error) {
       console.error("Error updating quotation number from lead selection:", error)
     }
@@ -525,67 +461,6 @@ const QuotationForm = ({
       } else {
         console.log("FMS lead conditions not met - BA:", baValue, "BI:", biValue)
       }
-    } else if (leadData.sheet === "ENQUIRY") {
-      const row = leadData.rowData
-      const alValue = row[37] ? safeToString(row[37].v) : ""
-      const amValue = row[38] ? safeToString(row[38].v) : ""
-      const atValue = row[45] ? safeToString(row[45].v) : ""
-
-
-      if (alValue !== "" && amValue === "") {
-
-        // FIRST: Process regular columns R-AK (indices 17-36) - 10 items
-        const itemColumns = [
-          { nameCol: 17, qtyCol: 18 }, // R, S
-          { nameCol: 19, qtyCol: 20 }, // T, U
-          { nameCol: 21, qtyCol: 22 }, // V, W
-          { nameCol: 23, qtyCol: 24 }, // X, Y
-          { nameCol: 25, qtyCol: 26 }, // Z, AA
-          { nameCol: 27, qtyCol: 28 }, // AB, AC
-          { nameCol: 29, qtyCol: 30 }, // AD, AE
-          { nameCol: 31, qtyCol: 32 }, // AF, AG
-          { nameCol: 33, qtyCol: 34 }, // AH, AI
-          { nameCol: 35, qtyCol: 36 }, // AJ, AK
-        ]
-        for (const { nameCol, qtyCol } of itemColumns) {
-          const itemName = row[nameCol] ? safeToString(row[nameCol].v).trim() : ""
-          const itemQty = row[qtyCol] ? safeToString(row[qtyCol].v) : ""
-
-
-          if (itemName !== "" && itemQty !== "") {
-            const qty = isNaN(Number(itemQty)) ? 1 : Number(itemQty)
-            autoItems.push({
-              name: itemName,
-              qty: qty,
-            })
-          }
-        }
-
-
-        // SECOND: Process JSON data from CB column (index 79) - Continue from item 11+
-        const cbValue = row[79] ? safeToString(row[79].v) : ""
-
-        if (cbValue !== "" && cbValue !== "null" && cbValue !== "undefined") {
-          try {
-            const jsonData = JSON.parse(cbValue)
-
-            if (Array.isArray(jsonData)) {
-              jsonData.forEach((item, index) => {
-                if (item.name && item.quantity !== undefined && item.quantity !== null) {
-                  const qty = isNaN(Number(item.quantity)) ? 1 : Number(item.quantity)
-                  autoItems.push({
-                    name: item.name,
-                    qty: qty,
-                  })
-                }
-              })
-            }
-          } catch (error) {
-            console.error("Error parsing JSON data from ENQUIRY CB column:", error)
-          }
-        }
-
-      }
     }
 
     // Update items if found from lead data
@@ -657,10 +532,11 @@ const QuotationForm = ({
     if (!companyName || companyName === "Select Company") return
 
     try {
+      setIsItemsLoading(true)
 
       // First try FMS sheet
       const fmsUrl =
-        "https://docs.google.com/spreadsheets/d/1teE4IIdCw7qnQvm_W7xAPgmGgpU13dtYw6y5ui01HHc/gviz/tq?tqx=out:json&sheet=FMS"
+        "https://docs.google.com/spreadsheets/d/1rU3-YbHmR7lmx5F1_VCtrQm1EL_i27jwF3ychvzSpj4/gviz/tq?tqx=out:json&sheet=FMS"
       const fmsResponse = await fetch(fmsUrl)
       const fmsText = await fmsResponse.text()
 
@@ -684,9 +560,7 @@ const QuotationForm = ({
               const baValue = row.c[52] ? safeToString(row.c[52].v) : ""
               const biValue = row.c[60] ? safeToString(row.c[60].v) : ""
 
-
               if (baValue !== "" && biValue === "") {
-
                 // FIRST: Extract items from regular columns (AN to AW)
                 const itemColumns = [
                   { nameCol: 39, qtyCol: 40 }, // AN (Item Name1), AO (Quantity1)
@@ -699,7 +573,6 @@ const QuotationForm = ({
                 for (const { nameCol, qtyCol } of itemColumns) {
                   const itemName = row.c[nameCol] ? safeToString(row.c[nameCol].v).trim() : ""
                   const itemQty = row.c[qtyCol] ? safeToString(row.c[qtyCol].v) : ""
-
 
                   if (itemName !== "" && itemQty !== "") {
                     // Fix: Preserve 0 quantities, only use fallback for invalid numbers
@@ -716,7 +589,7 @@ const QuotationForm = ({
                 if (csValue !== "") {
                   try {
                     // Parse JSON data from CS column
-                    const jsonData = JSON.parse(csValue)
+                    const jsonData = JSON.parse(csValue) // Corrected from cbValue
 
                     if (Array.isArray(jsonData)) {
                       jsonData.forEach((item) => {
@@ -743,96 +616,8 @@ const QuotationForm = ({
         }
       }
 
-      // If not found in FMS, try ENQUIRY TO ORDER sheet
-      if (!itemsFound) {
-
-        const enquiryUrl =
-          "https://docs.google.com/spreadsheets/d/1teE4IIdCw7qnQvm_W7xAPgmGgpU13dtYw6y5ui01HHc/gviz/tq?tqx=out:json&sheet=ENQUIRY%20TO%20ORDER"
-        const enquiryResponse = await fetch(enquiryUrl)
-        const enquiryText = await enquiryResponse.text()
-
-        const enquiryJsonStart = enquiryText.indexOf("{")
-        const enquiryJsonEnd = enquiryText.lastIndexOf("}") + 1
-        const enquiryJsonData = enquiryText.substring(enquiryJsonStart, enquiryJsonEnd)
-        const enquiryData = JSON.parse(enquiryJsonData)
-
-        if (enquiryData && enquiryData.table && enquiryData.table.rows) {
-          for (const row of enquiryData.table.rows) {
-            if (row.c && row.c[3]) {
-              // Column D (index 3)
-              const rowCompanyName = safeToString(row.c[3].v)
-              if (rowCompanyName && rowCompanyName.toLowerCase().trim() === companyName.toLowerCase().trim()) {
-                // Check if AL (index 37) is not null and AT (index 45) is null
-                const alValue = row.c[37] ? safeToString(row.c[37].v) : ""
-                const atValue = row.c[45] ? safeToString(row.c[45].v) : ""
-
-                if (alValue !== "" && atValue === "") {
-
-                  // Extract items from R to AK (columns 17-36)
-                  const itemColumns = [
-                    { nameCol: 17, qtyCol: 18 }, // R (Item Name1), S (Quantity1)
-                    { nameCol: 19, qtyCol: 20 }, // T (Item Name2), U (Quantity2)
-                    { nameCol: 21, qtyCol: 22 }, // V (Item Name3), W (Quantity3)
-                    { nameCol: 23, qtyCol: 24 }, // X (Item Name4), Y (Quantity4)
-                    { nameCol: 25, qtyCol: 26 }, // Z (Item Name5), AA (Quantity5)
-                    { nameCol: 27, qtyCol: 28 }, // AB (Item Name6), AC (Quantity6)
-                    { nameCol: 29, qtyCol: 30 }, // AD (Item Name7), AE (Quantity7)
-                    { nameCol: 31, qtyCol: 32 }, // AF (Item Name8), AG (Quantity8)
-                    { nameCol: 33, qtyCol: 34 }, // AH (Item Name9), AI (Quantity9)
-                    { nameCol: 35, qtyCol: 36 }, // AJ (Item Name10), AK (Quantity10)
-                  ]
-
-                  for (const { nameCol, qtyCol } of itemColumns) {
-                    const itemName = row.c[nameCol] ? safeToString(row.c[nameCol].v).trim() : ""
-                    const itemQty = row.c[qtyCol] ? safeToString(row.c[qtyCol].v) : ""
-
-                    if (itemName !== "" && itemQty !== "") {
-                      // Fix: Preserve 0 quantities, only use fallback for invalid numbers
-                      const qty = isNaN(Number(itemQty)) ? 1 : Number(itemQty)
-                      autoItems.push({
-                        name: itemName,
-                        qty: qty,
-                      })
-                    }
-                  }
-
-                  // ALSO: Check for JSON data in CB column (index 55) for ENQUIRY TO ORDER
-                  const cbValue = row.c[55] ? safeToString(row.c[55].v) : ""
-
-                  if (cbValue !== "") {
-                    try {
-                      // Parse JSON data from CB column
-                      const jsonData = JSON.parse(cbValue)
-
-                      if (Array.isArray(jsonData)) {
-                        jsonData.forEach((item) => {
-                          if (item.name && item.quantity !== undefined && item.quantity !== null) {
-                            // Fix: Preserve 0 quantities, only use fallback for invalid numbers
-                            const qty = isNaN(Number(item.quantity)) ? 1 : Number(item.quantity)
-                            autoItems.push({
-                              name: item.name,
-                              qty: qty,
-                            })
-                          }
-                        })
-                      }
-                    } catch (jsonError) {
-                      console.error("Error parsing JSON from CB column:", jsonError)
-                    }
-                  }
-
-                  itemsFound = true
-                  break
-                }
-              }
-            }
-          }
-        }
-      }
-
       // If items found, auto-fill the quotation table
       if (itemsFound && autoItems.length > 0) {
-
         // Clear existing items and add new ones
         const newItems = autoItems.map((item, index) => {
           // Look up the product code from productData
@@ -856,12 +641,11 @@ const QuotationForm = ({
 
         // Update quotation data with new items
         handleInputChange("items", newItems)
-
       }
     } catch (error) {
       console.error("Error auto-filling items:", error)
     } finally {
-      setIsItemsLoading(false); // Stop loading regardless of success/failure
+      setIsItemsLoading(false) // Stop loading regardless of success/failure
     }
   }
 

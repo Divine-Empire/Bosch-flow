@@ -22,7 +22,7 @@ export const useQuotationData = (initialSpecialDiscount = 0) => {
     consignorName: "",
     consignorAddress: "",
     consignorMobile: "",
-    consignorPhone: "9630060004",
+    consignorPhone: "",
     consignorGSTIN: "",
     consignorStateCode: "",
     companyName: "",
@@ -106,7 +106,7 @@ export const useQuotationData = (initialSpecialDiscount = 0) => {
       consignorState &&
       consigneeState &&
       consignorState.toLowerCase().trim() ===
-        consigneeState.toLowerCase().trim();
+      consigneeState.toLowerCase().trim();
     return !statesMatch;
   };
 
@@ -180,7 +180,7 @@ export const useQuotationData = (initialSpecialDiscount = 0) => {
           (sum, item) => sum + Number(item.flatDiscount),
           0
         );
-       const subtotal = prev.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const subtotal = prev.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
         const taxableAmount = subtotal;
 
         let cgstAmount = 0;

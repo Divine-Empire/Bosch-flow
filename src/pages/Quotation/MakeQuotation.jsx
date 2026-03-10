@@ -66,7 +66,7 @@ function MakeQuotation() {
     const fetchExistingQuotations = async () => {
       try {
         const scriptUrl =
-          "https://script.google.com/macros/s/AKfycbwu7wzvou_bj7zZvM1q5NCzTgHMaO6WMZVswb3aNG8VJ42Jz1W_sAd4El42tgmg3JKC/exec";
+          "https://script.google.com/macros/s/AKfycbwkvholGxpU6WFQt3i9pzctKXkBHsY-qkeJd8DenMCMANbKHq5rp3ULEV67uGrWhTDoag/exec";
         const response = await fetch(scriptUrl, {
           method: "POST",
           headers: {
@@ -160,7 +160,7 @@ function MakeQuotation() {
 
     try {
       const scriptUrl =
-        "https://script.google.com/macros/s/AKfycbwu7wzvou_bj7zZvM1q5NCzTgHMaO6WMZVswb3aNG8VJ42Jz1W_sAd4El42tgmg3JKC/exec";
+        "https://script.google.com/macros/s/AKfycbwkvholGxpU6WFQt3i9pzctKXkBHsY-qkeJd8DenMCMANbKHq5rp3ULEV67uGrWhTDoag/exec";
       const response = await fetch(scriptUrl, {
         method: "POST",
         headers: {
@@ -399,7 +399,7 @@ function MakeQuotation() {
 
       // Upload PDF to Google Drive (this creates a permanent copy)
       const scriptUrl =
-        "https://script.google.com/macros/s/AKfycbzVseC0GMn77c4hbt-caHpWgb4zmh99VByIaNfReJjBsR4eUZ63uaLJ670c3p116t3lcQ/exec";
+        "https://script.google.com/macros/s/AKfycbwkvholGxpU6WFQt3i9pzctKXkBHsY-qkeJd8DenMCMANbKHq5rp3ULEV67uGrWhTDoag/exec";
       const pdfFileName = `Quotation_${quotationData.quotationNo}.pdf`;
 
       const pdfResponse = await fetch(scriptUrl, {
@@ -409,22 +409,25 @@ function MakeQuotation() {
         },
         body: new URLSearchParams({
           sheetName: "Send",
-          action: "uploadPDF",
+          action: "uploadFile",
           pdfData: base64Data,
+          base64Data: base64Data,
           fileName: pdfFileName,
+          mimeType: "application/pdf",
+          folderId: "1_IwSdILXOSvRoma5PTziuv4XTYpjYRfR",
         }),
       });
 
       const pdfResult = await pdfResponse.json();
 
       if (!pdfResult.success) {
-        throw new Error("Failed to upload PDF");
+        throw new Error("Failed to upload PDF: " + (pdfResult.error || "Unknown error"));
       }
 
       const permanentPdfUrl = pdfResult.fileUrl;
-      const permanentFileId = pdfResult.fileId; // NEW: Get the file ID
+      const permanentFileId = pdfResult.fileId;
 
-      // FIXED: Pass the permanent file ID instead of base64Data to avoid duplicate PDF creation
+      // FIXED: Pass the permanent file ID and potential email address
       const sendResponse = await fetch(scriptUrl, {
         method: "POST",
         headers: {
@@ -435,7 +438,8 @@ function MakeQuotation() {
           action: "insertAndEmail",
           quotationNo: quotationData.quotationNo,
           consigneeContactName: quotationData.consigneeContactName,
-          permanentFileId: permanentFileId, // FIXED: Pass file ID instead of pdfData
+          consigneeEmail: quotationData.consigneeEmail || "", // Handle missing email
+          permanentFileId: permanentFileId,
           fileName: pdfFileName,
           consigneeName:
             quotationData.consigneeName || quotationData.consigneeContactName,
@@ -549,12 +553,16 @@ function MakeQuotation() {
       const fileName = `Quotation_${finalQuotationNo}.pdf`;
 
       const scriptUrl =
-        "https://script.google.com/macros/s/AKfycbwu7wzvou_bj7zZvM1q5NCzTgHMaO6WMZVswb3aNG8VJ42Jz1W_sAd4El42tgmg3JKC/exec";
+        "https://script.google.com/macros/s/AKfycbwkvholGxpU6WFQt3i9pzctKXkBHsY-qkeJd8DenMCMANbKHq5rp3ULEV67uGrWhTDoag/exec";
 
       const pdfParams = {
-        action: "QuotationuploadPDF",
+        action: "uploadFile",
+        sheetName: "Make Quotation",
         pdfData: base64Data,
+        base64Data: base64Data,
         fileName: fileName,
+        mimeType: "application/pdf",
+        folderId: "1_IwSdILXOSvRoma5PTziuv4XTYpjYRfR",
       };
 
       const pdfUrlParams = new URLSearchParams();
@@ -666,7 +674,7 @@ function MakeQuotation() {
 
       const sheetParams = {
         sheetName: "Make Quotation",
-        action: "insert1",
+        action: "insert",
         rowData: JSON.stringify(mainRowData),
       };
 
@@ -713,7 +721,7 @@ function MakeQuotation() {
 
         const itemParams = {
           sheetName: "Quotation Items",
-          action: "insert1",
+          action: "insert",
           rowData: JSON.stringify(itemData),
         };
 

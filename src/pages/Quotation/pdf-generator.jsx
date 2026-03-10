@@ -1,9 +1,9 @@
 import React from "react";
 import ReactDOMServer from "react-dom/server";
-const logo = null; // image file not available
-const maniquipLogo = null; // image file not available
-const qr = null; // image file not available
-const maniquipLogo1 = null; // image file not available
+import logo from "../../assests/WhatsApp Image 2025-05-14 at 4.11.43 PM.jpeg";
+import maniquipLogo from "../../assests/banner.jpeg";
+import qr from "../../assests/qrlogo.png";
+import maniquipLogo1 from "../../assests/Screenshot 2025-09-25 at 2.48.03 PM.png";
 
 // React PDF Component that matches your preview interface exactly
 // Function to convert number to words for Indian Rupees
@@ -137,64 +137,64 @@ const QuotationPDFComponent = ({
   // Build items data - FIXED QUANTITY DISPLAY ISSUE
   const itemsData = quotationData.items
     ? quotationData.items.map((item, index) => {
-        const row = [String(index + 1)];
+      const row = [String(index + 1)];
 
-        // Code
-        if (!hiddenColumns?.hideCode) row.push(String(item.code || " "));
+      // Code
+      if (!hiddenColumns?.hideCode) row.push(String(item.code || " "));
 
-        // Product Name
-        if (!hiddenColumns?.hideProductName) row.push(String(item.name || " "));
+      // Product Name
+      if (!hiddenColumns?.hideProductName) row.push(String(item.name || " "));
 
-        // Description
-        if (!hiddenColumns?.hideDescription)
-          row.push(String(item.description || " "));
+      // Description
+      if (!hiddenColumns?.hideDescription)
+        row.push(String(item.description || " "));
 
-        // GST %
-        if (!hiddenColumns?.hideGST) row.push(String(`${item.gst || 18}%`));
+      // GST %
+      if (!hiddenColumns?.hideGST) row.push(String(`${item.gst || 18}%`));
 
-        // Qty
-        if (!hiddenColumns?.hideQty) {
-          const quantity = Number(item.qty) || 1;
-          row.push(String(quantity));
-        }
+      // Qty
+      if (!hiddenColumns?.hideQty) {
+        const quantity = Number(item.qty) || 1;
+        row.push(String(quantity));
+      }
 
-        // Units
-        if (!hiddenColumns?.hideUnits) row.push(String(item.units || "Nos"));
+      // Units
+      if (!hiddenColumns?.hideUnits) row.push(String(item.units || "Nos"));
 
-        // Rate
-        if (!hiddenColumns?.hideRate)
-          row.push(`₹${formatCurrency(item.rate || 0)}`);
+      // Rate
+      if (!hiddenColumns?.hideRate)
+        row.push(`₹${formatCurrency(item.rate || 0)}`);
 
-        // Disc %
-        if (!hiddenColumns?.hideDisc)
-          row.push(String(`${item.discount || 0}%`));
+      // Disc %
+      if (!hiddenColumns?.hideDisc)
+        row.push(String(`${item.discount || 0}%`));
 
-        // Flat Disc
-        if (!hiddenColumns?.hideFlatDisc)
-          row.push(`₹${formatCurrency(item.flatDiscount || 0)}`);
+      // Flat Disc
+      if (!hiddenColumns?.hideFlatDisc)
+        row.push(`₹${formatCurrency(item.flatDiscount || 0)}`);
 
-        // Amount
-        if (!hiddenColumns?.hideAmount)
-          row.push(`₹${formatCurrency(item.amount || 0)}`);
+      // Amount
+      if (!hiddenColumns?.hideAmount)
+        row.push(`₹${formatCurrency(item.amount || 0)}`);
 
-        return row;
-      })
+      return row;
+    })
     : [
-        (() => {
-          const defaultRow = ["1"];
-          if (!hiddenColumns?.hideCode) defaultRow.push(" ");
-          if (!hiddenColumns?.hideProductName) defaultRow.push(" ");
-          if (!hiddenColumns?.hideDescription) defaultRow.push(" ");
-          if (!hiddenColumns?.hideGST) defaultRow.push("18%");
-          if (!hiddenColumns?.hideQty) defaultRow.push("1");
-          if (!hiddenColumns?.hideUnits) defaultRow.push("Nos");
-          if (!hiddenColumns?.hideRate) defaultRow.push("₹0.00");
-          if (!hiddenColumns?.hideDisc) defaultRow.push("0%");
-          if (!hiddenColumns?.hideFlatDisc) defaultRow.push("₹0.00");
-          if (!hiddenColumns?.hideAmount) defaultRow.push("₹0.00");
-          return defaultRow;
-        })(),
-      ];
+      (() => {
+        const defaultRow = ["1"];
+        if (!hiddenColumns?.hideCode) defaultRow.push(" ");
+        if (!hiddenColumns?.hideProductName) defaultRow.push(" ");
+        if (!hiddenColumns?.hideDescription) defaultRow.push(" ");
+        if (!hiddenColumns?.hideGST) defaultRow.push("18%");
+        if (!hiddenColumns?.hideQty) defaultRow.push("1");
+        if (!hiddenColumns?.hideUnits) defaultRow.push("Nos");
+        if (!hiddenColumns?.hideRate) defaultRow.push("₹0.00");
+        if (!hiddenColumns?.hideDisc) defaultRow.push("0%");
+        if (!hiddenColumns?.hideFlatDisc) defaultRow.push("₹0.00");
+        if (!hiddenColumns?.hideAmount) defaultRow.push("₹0.00");
+        return defaultRow;
+      })(),
+    ];
   // Financial calculations - updated to use breakdown objects
   const subtotal = quotationData.subtotal || 0;
   const totalFlatDiscount = quotationData.totalFlatDiscount || 0;
@@ -234,6 +234,7 @@ const QuotationPDFComponent = ({
 
   return (
     <div
+      className="pdf-container"
       style={{
         width: "210mm",
         minHeight: "auto",
@@ -248,6 +249,21 @@ const QuotationPDFComponent = ({
         position: "relative",
       }}
     >
+      <style>
+        {`
+          /* Override Tailwind's base oklch colors for PDF generation */
+          .pdf-container, .pdf-container * {
+            border-color: #e5e7eb !important;
+            outline-color: transparent !important;
+            color: #000000 !important;
+            background-color: transparent !important;
+          }
+          .pdf-container { background-color: #ffffff !important; }
+          .pdf-container table, .pdf-container th, .pdf-container td {
+            border-color: #ccc !important;
+          }
+        `}
+      </style>
       {/* Header Section with Company Logo */}
       <div
         style={{
@@ -514,34 +530,34 @@ const QuotationPDFComponent = ({
                         padding: "8px 4px",
                         textAlign:
                           tableHeaders[cellIndex] === "S No." ||
-                          tableHeaders[cellIndex] === "GST %" ||
-                          tableHeaders[cellIndex] === "Qty" ||
-                          tableHeaders[cellIndex] === "Units" ||
-                          tableHeaders[cellIndex] === "Disc %" ||
-                          tableHeaders[cellIndex] === "Flat Disc"
+                            tableHeaders[cellIndex] === "GST %" ||
+                            tableHeaders[cellIndex] === "Qty" ||
+                            tableHeaders[cellIndex] === "Units" ||
+                            tableHeaders[cellIndex] === "Disc %" ||
+                            tableHeaders[cellIndex] === "Flat Disc"
                             ? "center"
                             : tableHeaders[cellIndex] === "Product Name" ||
                               tableHeaders[cellIndex] === "Description" ||
                               tableHeaders[cellIndex] === "Code"
-                            ? "left"
-                            : "right",
+                              ? "left"
+                              : "right",
                         fontSize: "10px",
                         verticalAlign: "top",
                         width:
                           tableHeaders[cellIndex] === "Product Name"
                             ? "150px"
                             : tableHeaders[cellIndex] === "Description"
-                            ? "300px"
-                            : "auto",
+                              ? "300px"
+                              : "auto",
                         whiteSpace:
                           tableHeaders[cellIndex] === "Description"
                             ? "pre-line"
                             : tableHeaders[cellIndex] === "Product Name"
-                            ? "normal"
-                            : "nowrap",
+                              ? "normal"
+                              : "nowrap",
                         wordBreak:
                           tableHeaders[cellIndex] === "Product Name" ||
-                          tableHeaders[cellIndex] === "Description"
+                            tableHeaders[cellIndex] === "Description"
                             ? "break-word"
                             : "normal",
                       }}
@@ -657,11 +673,11 @@ const QuotationPDFComponent = ({
                     {(() => {
                       const discountFromPercentage = quotationData.items
                         ? quotationData.items.reduce((sum, item) => {
-                            const itemTotal = item.qty * item.rate;
-                            return (
-                              sum + itemTotal * ((item.discount || 0) / 100)
-                            );
-                          }, 0)
+                          const itemTotal = item.qty * item.rate;
+                          return (
+                            sum + itemTotal * ((item.discount || 0) / 100)
+                          );
+                        }, 0)
                         : 0;
                       const totalDiscount =
                         discountFromPercentage +
@@ -1277,7 +1293,7 @@ const QuotationPDFComponent = ({
               {/* Notes */}
               {quotationData.notes &&
                 quotationData.notes.filter((note) => note.trim()).length >
-                  0 && (
+                0 && (
                   <div style={{ marginTop: "16px" }}>
                     <h4
                       style={{
@@ -1676,10 +1692,17 @@ export const generatePDFFromData = async (
       },
     };
 
-    const pdfDataUri = await html2pdf()
-      .set(options)
-      .from(htmlString)
-      .outputPdf("datauristring");
+    // Wrap html2pdf execution in a Promise with timeout to prevent hanging UI
+    const pdfDataUri = await Promise.race([
+      html2pdf()
+        .set(options)
+        .from(htmlString)
+        .outputPdf("datauristring"),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("PDF generation timed out. Please try again.")), 20000)
+      )
+    ]);
+
     return pdfDataUri;
   } catch (error) {
     console.error("Error generating PDF:", error);
