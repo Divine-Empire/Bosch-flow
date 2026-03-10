@@ -1,28 +1,26 @@
 import { ReactNode, useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, LayoutDashboard, FileText, Receipt, LogOut, FileSpreadsheet, PhoneCall, Wrench, CreditCard, Calculator, PackageCheck, MessageSquare } from 'lucide-react';
+import { Menu, X, LayoutDashboard, FileText, Receipt, LogOut, PhoneCall, Wrench, CreditCard, Calculator, PackageCheck, MessageSquare } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
-  currentPage: string;
-  onNavigate: (page: string) => void;
 }
 
-export default function Layout({ children, currentPage, onNavigate }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { logout, user } = useAuth();
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'enquiry', label: 'Enquiry Entry', icon: FileText },
-    { id: 'challan', label: 'Challan Receipt', icon: Receipt },
-    { id: 'quotation', label: 'Quotation', icon: FileSpreadsheet },
-    { id: 'followup', label: 'Follow Up', icon: PhoneCall },
-    { id: 'repairstatus', label: 'Repair Status', icon: Wrench },
-    { id: 'InvoiceGeneration', label: 'Invoice Generation', icon: Calculator },
-    { id: 'handover', label: 'Handover', icon: PackageCheck },
-    { id: 'paymentstatus', label: 'Payment Status', icon: CreditCard },
-    { id: 'feedback', label: 'Feedback', icon: MessageSquare },
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/enquiry', label: 'Enquiry Entry', icon: FileText },
+    { path: '/challan', label: 'Challan Receipt', icon: Receipt },
+    { path: '/followup', label: 'Follow Up', icon: PhoneCall },
+    { path: '/repairstatus', label: 'Repair Status', icon: Wrench },
+    { path: '/invoicegeneration', label: 'Invoice Generation', icon: Calculator },
+    { path: '/handover', label: 'Handover', icon: PackageCheck },
+    { path: '/paymentstatus', label: 'Payment Status', icon: CreditCard },
+    { path: '/feedback', label: 'Feedback', icon: MessageSquare },
   ];
 
   return (
@@ -62,20 +60,20 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
-                <li key={item.id}>
-                  <button
-                    onClick={() => {
-                      onNavigate(item.id);
-                      setSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === item.id
-                      ? 'bg-blue-50 text-blue-600 font-medium'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                <li key={item.path}>
+                  <NavLink
+                    to={item.path}
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) =>
+                      `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                        ? 'bg-blue-50 text-blue-600 font-medium'
+                        : 'text-gray-700 hover:bg-gray-100'
+                      }`
+                    }
                   >
                     <Icon size={20} />
                     {item.label}
-                  </button>
+                  </NavLink>
                 </li>
               );
             })}
