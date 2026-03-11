@@ -55,7 +55,7 @@ export const getNextQuotationNumber = async (companyPrefix = "OT") => {
       const endShort = String(financialYearEnd).slice(-2)
       const currentFY = startShort + "-" + endShort
 
-      return `${companyPrefix}-${currentFY}-2401`
+      return `${companyPrefix}-${currentFY}-0001`
     }
   } catch (error) {
     console.error("Error getting next quotation number:", error)
@@ -69,7 +69,7 @@ export const getNextQuotationNumber = async (companyPrefix = "OT") => {
     const endShort = String(financialYearEnd).slice(-2)
     const currentFY = startShort + "-" + endShort
 
-    return `${companyPrefix}-${currentFY}-2201`
+    return `${companyPrefix}-${currentFY}-0001`
   }
 }
 
