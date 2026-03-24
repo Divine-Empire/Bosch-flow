@@ -31,6 +31,7 @@ const COL = {
   QTY: 17,
   PART_NO: 18,
   RECEIVER_NAME: 19,
+  STATE_CODE: 82, // Column CE
 };
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -79,6 +80,7 @@ function rowToEnquiry(row: string[]): Enquiry {
     items: items.length > 0 ? items : [{ id: '1', itemName: '', modelName: '', qty: 0, partNo: '' }],
     receiverName: row[COL.RECEIVER_NAME] ?? '',
     createdAt: row[COL.TIMESTAMP] ?? new Date().toISOString(),
+    stateCode: row[COL.STATE_CODE] ?? '',
   };
 }
 
@@ -108,6 +110,7 @@ const defaultForm = (): Omit<Enquiry, 'id' | 'createdAt'> => ({
   items: [{ id: '1', itemName: '', modelName: '', qty: 0, partNo: '' }],
   receiverName: '',
   billAttach: '',
+  stateCode: '',
 });
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -289,28 +292,28 @@ export default function EnquiryIndent() {
       const partNos = JSON.stringify(formData.items.map(i => i.partNo));
 
       // 4. Build the row (must match sheet column order A→T)
-      const row = [
-        timestamp,                       // A: Timestamp
-        entryNo,                    // B: Entry No.
-        formData.enquiryType,            // C: Enquiry Type
-        formData.clientType,             // D: Client Type
-        formData.companyName,            // E: Company Name
-        formData.contactPersonName,      // F: Contact Person Name
-        formData.contactPersonNumber,    // G: Contact Person Number
-        formData.hoBillAddress,          // H: HO Bill Address
-        formData.location,              // I: Location
-        formData.gstNumber,              // J: GST Number
-        formData.clientEmailId,          // K: Client Email Id
-        formData.priority,               // L: Priority
-        formData.warrantyCheck,          // M: Warranty Check
-        formData.billDate ?? '', // N: Bill Date
-        billAttachUrl,                   // O: Bill Attach (Drive URL)
-        itemNames,                       // P: Items Name (JSON)
-        modelNames,                      // Q: Model Name (JSON)
-        qtys,                            // R: Qty (JSON)
-        partNos,                         // S: Part No (JSON)
-        formData.receiverName,           // T: Receiver Name
-      ];
+      const row = new Array(83).fill('');
+      row[COL.TIMESTAMP] = timestamp;
+      row[COL.ENTRY_NO] = entryNo;
+      row[COL.ENQUIRY_TYPE] = formData.enquiryType;
+      row[COL.CLIENT_TYPE] = formData.clientType;
+      row[COL.COMPANY_NAME] = formData.companyName;
+      row[COL.CONTACT_PERSON_NAME] = formData.contactPersonName;
+      row[COL.CONTACT_PERSON_NUMBER] = formData.contactPersonNumber;
+      row[COL.HO_BILL_ADDRESS] = formData.hoBillAddress;
+      row[COL.LOCATION] = formData.location;
+      row[COL.GST_NUMBER] = formData.gstNumber;
+      row[COL.CLIENT_EMAIL_ID] = formData.clientEmailId;
+      row[COL.PRIORITY] = formData.priority;
+      row[COL.WARRANTY_CHECK] = formData.warrantyCheck;
+      row[COL.WARRANTY_LAST_DATE] = formData.billDate ?? '';
+      row[COL.BILL_ATTACH] = billAttachUrl;
+      row[COL.ITEMS_NAME] = itemNames;
+      row[COL.MODEL_NAME] = modelNames;
+      row[COL.QTY] = qtys;
+      row[COL.PART_NO] = partNos;
+      row[COL.RECEIVER_NAME] = formData.receiverName;
+      row[COL.STATE_CODE] = formData.stateCode ?? '';
 
       // 5. Insert into GAS sheet
       await insertRow(SHEET_NAME, row);
@@ -677,6 +680,17 @@ export default function EnquiryIndent() {
                     className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${formData.clientType === 'Existing' ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
                       }`}
                     required
+                  />
+                </div>
+
+                {/* State Code */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">State Code</label>
+                  <input
+                    type="text"
+                    value={formData.stateCode || ''}
+                    onChange={(e) => handleInputChange('stateCode' as any, e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 

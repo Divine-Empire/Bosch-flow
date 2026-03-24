@@ -42,7 +42,8 @@ const QuotationForm = ({
 }) => {
   const [dropdownData, setDropdownData] = useState({})
   const [stateOptions, setStateOptions] = useState(["Select State"])
-  const [companyOptions, setCompanyOptions] = useState(["Select Company"])
+  const [dropdownCompanyOptions, setDropdownCompanyOptions] = useState(["Select Company"])
+  const [indentCompanyOptions, setIndentCompanyOptions] = useState(["Select Company"])
   const [referenceOptions, setReferenceOptions] = useState(["Select Reference"])
   const [preparedByOptions, setPreparedByOptions] = useState([""])
   const [productCodes, setProductCodes] = useState([])
@@ -136,7 +137,7 @@ const QuotationForm = ({
           setStateOptions(stateOptionsData)
           setPreparedByOptions(preparedByOptionsData)
           setReferenceOptions(referenceOptionsData)
-          setCompanyOptions(companyOptionsData) // Add this to correctly populate company options
+          setDropdownCompanyOptions(companyOptionsData) // Store DROPDOWN company options separately
           setDropdownData((prev) => ({
             ...prev,
             states: stateDetailsMap,
@@ -159,7 +160,7 @@ const QuotationForm = ({
                 }
               }
             })
-            setCompanyOptions(indentCompanyOptions)
+            setIndentCompanyOptions(indentCompanyOptions) // Store Indent company options separately
             console.log("Company options updated from Indent sheet. Count:", indentCompanyOptions.length)
           }
 
@@ -230,12 +231,13 @@ const QuotationForm = ({
                 // For Indent sheet, we might not have all the mapping yet, but we store what's possible
                 leadNoDataMap[leadNo] = {
                   sheet: "Indent",
-                  companyName: row[3] ? String(row[3]) : "", // Assuming column D or similar for company
-                  address: "",
-                  state: "",
-                  contactName: "",
-                  contactNo: "",
-                  gstin: "",
+                  companyName: row[4] ? String(row[4]).trim() : "", // Column E
+                  address: row[7] ? String(row[7]).trim() : "", // Column H
+                  state: row[8] ? String(row[8]).trim() : "", // Column I
+                  contactName: row[5] ? String(row[5]).trim() : "", // Column F
+                  contactNo: row[6] ? String(row[6]).trim() : "", // Column G
+                  gstin: row[9] ? String(row[9]).trim() : "", // Column J
+                  stateCode: row[82] ? String(row[82]).trim() : "", // Column CE
                   shipTo: "",
                   rowData: row,
                 }
@@ -353,6 +355,7 @@ const QuotationForm = ({
     handleInputChange("consigneeContactName", leadData.contactName)
     handleInputChange("consigneeContactNo", leadData.contactNo)
     handleInputChange("consigneeGSTIN", leadData.gstin)
+    handleInputChange("consigneeStateCode", leadData.stateCode)
 
     if (leadData.shipTo) {
       handleInputChange("shipTo", leadData.shipTo)
@@ -680,7 +683,7 @@ const QuotationForm = ({
           <ConsigneeDetails
             quotationData={quotationData}
             handleInputChange={handleInputChange}
-            companyOptions={companyOptions}
+            companyOptions={showLeadNoDropdown ? indentCompanyOptions : dropdownCompanyOptions}
             dropdownData={dropdownData}
             onQuotationNumberUpdate={handleQuotationNumberUpdate}
             onAutoFillItems={handleAutoFillItems}

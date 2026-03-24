@@ -24,6 +24,7 @@ export interface Enquiry {
   items: Item[];
   receiverName: string;
   createdAt: string;
+  stateCode?: string;
 
   // Challan Receipt
   planned1?: string;
