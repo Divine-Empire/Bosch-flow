@@ -37,6 +37,10 @@ const QuotationDetails = ({
         if (websiteMatch) handleInputChange("website", websiteMatch[1])
       }
 
+      if (stateDetails.phone) {
+        handleInputChange("consignorPhone", stateDetails.phone)
+      }
+
       if (stateDetails.consignerAddress) {
         handleInputChange("consignorAddress", stateDetails.consignerAddress)
       }
@@ -67,6 +71,7 @@ const QuotationDetails = ({
       handleInputChange("consignorAddress", "")
       handleInputChange("consignorStateCode", "")
       handleInputChange("consignorGSTIN", "")
+      handleInputChange("consignorPhone", "")
       handleInputChange("msmeNumber", "")
     }
   }

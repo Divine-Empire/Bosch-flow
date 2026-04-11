@@ -84,22 +84,19 @@ const QuotationForm = ({
                 preparedByOptionsData.push(preparedByName)
               }
 
-              const stateName = row[4] ? String(row[4]).trim() : ""
-              if (stateName && stateName !== "STATE" && !stateOptionsData.includes(stateName)) {
+              const stateName = row[19] ? String(row[19]).trim() : ""
+              if (stateName && stateName !== "STATE" && stateName !== "Select State" && !stateOptionsData.includes(stateName)) {
                 stateOptionsData.push(stateName)
 
                 let bankDetails = row[10] || ""
 
-                const pan = row[11] || ""
-                const msmeNumber = row[12] || ""
-
                 stateDetailsMap[stateName] = {
                   bankDetails: bankDetails,
-                  consignerAddress: row[28] || "",
-                  stateCode: row[18] || "",
-                  gstin: row[17] || "",
-                  pan: pan,
-                  msmeNumber: msmeNumber,
+                  consignerAddress: row[20] || "",
+                  stateCode: row[22] || "",
+                  gstin: row[21] || "",
+                  msmeNumber: row[23] || "",
+                  phone: row[24] || "",
                 }
               }
 
@@ -124,11 +121,7 @@ const QuotationForm = ({
                 referenceOptionsData.push(referenceName)
 
                 referenceDetailsMap[referenceName] = {
-                  mobile: row[2] || "",
-                  phone: row[3] || "",
-                  gstin: row[17] || "",     // Column R (index 17)
-                  stateCode: row[18] || "", // Column S (index 18)
-                  msmeNumber: row[12] || "", // Column M (index 12)
+                  mobile: row[3] || "",
                 }
               }
             }
