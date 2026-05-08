@@ -6,7 +6,7 @@ import { useRefresh } from '../contexts/RefreshContext';
 
 const SHEET_NAME = 'Indent';
 const FOLLOW_UP_SHEET_NAME = 'Follow-Up';
-const DATA_START_INDEX = 7;
+const DATA_START_INDEX = 6;
 
 // Column indices derived from row structure
 const COL = {
@@ -239,24 +239,22 @@ export default function FollowUp() {
       const parsed: Enquiry[] = [];
       for (let i = startIndex; i < indentRows.length; i++) {
         const row = indentRows[i];
-        const entryId = String(row[COL.ENTRY_NO]);
+        const planned3 = String(row[COL.PLANNED_3] || '').trim();
+        const actual3 = String(row[COL.ACTUAL_3] || '').trim();
 
-        if (entryId && entryId.startsWith('IN-')) {
-          const planned3 = String(row[COL.PLANNED_3] || '').trim();
-          const actual3 = String(row[COL.ACTUAL_3] || '').trim();
+        if (planned3 === 'Planned 3' || planned3 === '') continue;
 
-          const isPending = planned3.length > 0 && actual3.length === 0;
-          const isHistory = planned3.length > 0 && actual3.length > 0;
+        const isPending = planned3 !== '' && actual3 === '';
+        const isHistory = planned3 !== '' && actual3 !== '';
 
-          if (isPending || isHistory) {
-            const eq = rowToEnquiry(row, i + 1);
-            if (followupNextDateMap.has(eq.id)) {
-              eq.nextDate = followupNextDateMap.get(eq.id)!;
-            } else if (eq.nextDate) {
-              eq.nextDate = parseSheetDate(eq.nextDate);
-            }
-            parsed.push(eq);
+        if (isPending || isHistory) {
+          const eq = rowToEnquiry(row, i + 1);
+          if (followupNextDateMap.has(eq.id)) {
+            eq.nextDate = followupNextDateMap.get(eq.id)!;
+          } else if (eq.nextDate) {
+            eq.nextDate = parseSheetDate(eq.nextDate);
           }
+          parsed.push(eq);
         }
       }
       setEnquiries(parsed);
@@ -432,12 +430,12 @@ export default function FollowUp() {
 
   // Pending: planned3 exists AND actual3 is empty
   const pendingEnquiries = useMemo(() => {
-    return enquiries.filter((e) => e.planned3 && e.planned3.length > 0 && (!e.actual3 || e.actual3.length === 0));
+    return enquiries.filter((e) => e.planned3 && e.planned3 !== '' && (!e.actual3 || e.actual3 === ''));
   }, [enquiries]);
 
   // History: planned3 and actual3 both exist
   const historyEnquiries = useMemo(() => {
-    return enquiries.filter((e) => e.planned3 && e.planned3.length > 0 && e.actual3 && e.actual3.length > 0);
+    return enquiries.filter((e) => e.planned3 && e.planned3 !== '' && e.actual3 && e.actual3 !== '');
   }, [enquiries]);
 
   const handleTabChange = (tab: 'pending' | 'history') => {
