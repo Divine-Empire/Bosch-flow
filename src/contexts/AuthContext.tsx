@@ -1,13 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { fetchSheet } from '../utils/api';
 
 interface User {
   id: string;
-  role: 'admin' | 'user';
+  role: string;
+  name: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (id: string, password: string) => boolean;
+  login: (id: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -24,19 +26,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = (id: string, password: string): boolean => {
-    if (id === 'admin' && password === 'admin123') {
-      const userData = { id: 'admin', role: 'admin' as const };
-      setUser(userData);
-      localStorage.setItem('bosch_user', JSON.stringify(userData));
-      return true;
-    } else if (id === 'user' && password === 'user123') {
-      const userData = { id: 'user', role: 'user' as const };
-      setUser(userData);
-      localStorage.setItem('bosch_user', JSON.stringify(userData));
-      return true;
+  const login = async (id: string, password: string): Promise<boolean> => {
+    try {
+      const rows = await fetchSheet('Login');
+      
+      // Start from 1 assuming row 0 is the header (UserName, UserId, Password, Role)
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        // Ensure row has enough columns
+        if (!row || row.length < 3) continue;
+        
+        const sheetUserId = String(row[1] || '').trim();
+        const sheetPassword = String(row[2] || '').trim();
+        
+        if (sheetUserId === id && sheetPassword === password) {
+          const userData = { 
+            name: String(row[0] || '').trim(),
+            id: sheetUserId, 
+            role: String(row[3] || 'user').trim() 
+          };
+          setUser(userData);
+          localStorage.setItem('bosch_user', JSON.stringify(userData));
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Error during login:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
