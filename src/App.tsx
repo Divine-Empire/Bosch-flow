@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Layout from './components/Layout';
 import EnquiryIndent from './pages/EnquiryEntry';
 import ChallanReceipt from './pages/ChallanReceipt';
+import Quotation from './pages/Quotation';
 import MakeQuotation from './pages/Quotation/MakeQuotation';
 import FollowUp from './pages/FollowUp';
 import RepairStatus from './pages/RepairStatus';
@@ -28,7 +29,8 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/enquiry" element={<EnquiryIndent />} />
         <Route path="/challan" element={<ChallanReceipt />} />
-        <Route path="/quotation" element={<MakeQuotation />} />
+        <Route path="/quotation" element={<Quotation />} />
+        <Route path="/make-quotation" element={<MakeQuotation />} />
         <Route path="/followup" element={<FollowUp />} />
         <Route path="/repairstatus" element={<RepairStatus />} />
         <Route path="/invoicegeneration" element={<InvoiceGeneration />} />

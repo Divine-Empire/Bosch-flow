@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, LayoutDashboard, FileText, Receipt, LogOut, PhoneCall, Wrench, CreditCard, Calculator, PackageCheck, MessageSquare } from 'lucide-react';
+import { Menu, X, LayoutDashboard, FileText, Receipt, LogOut, PhoneCall, Wrench, CreditCard, Calculator, PackageCheck, MessageSquare, ClipboardList } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -15,6 +15,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/enquiry', label: 'Enquiry Entry', icon: FileText },
     { path: '/challan', label: 'Challan Receipt', icon: Receipt },
+    { path: '/quotation', label: 'Quotation', icon: ClipboardList },
     { path: '/followup', label: 'Follow Up', icon: PhoneCall },
     { path: '/repairstatus', label: 'Repair Status', icon: Wrench },
     { path: '/invoicegeneration', label: 'Invoice Generation', icon: Calculator },

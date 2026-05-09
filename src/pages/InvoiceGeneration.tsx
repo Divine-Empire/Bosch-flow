@@ -385,7 +385,7 @@ export default function InvoiceGeneration() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Invoice Generation</h1>
         <button
-          onClick={() => navigate('/quotation')}
+          onClick={() => navigate('/make-quotation')}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
         >
           make Quotation
