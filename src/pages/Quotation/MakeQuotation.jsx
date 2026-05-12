@@ -105,7 +105,7 @@ function MakeQuotation() {
   useEffect(() => {
     const initializeQuotationNumber = async () => {
       try {
-        const nextQuotationNumber = await getNextQuotationNumber();
+        const nextQuotationNumber = await getNextQuotationNumber("BS");
         setQuotationData((prev) => ({
           ...prev,
           quotationNo: nextQuotationNumber,
@@ -752,7 +752,7 @@ function MakeQuotation() {
 
       alert("Quotation saved successfully with all items!");
 
-      const nextQuotationNumber = await getNextQuotationNumber();
+      const nextQuotationNumber = await getNextQuotationNumber("BS");
       setQuotationData({
         quotationNo: nextQuotationNumber,
         date: new Date().toLocaleDateString("en-GB"),
