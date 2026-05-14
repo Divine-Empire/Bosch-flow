@@ -16,15 +16,7 @@ export const useQuotationData = (initialSpecialDiscount = 0) => {
   });
 
   const [quotationData, setQuotationData] = useState({
-    quotationNo: (() => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const fyStart = now.getMonth() >= 3 ? year : year - 1;
-  const fyEnd = fyStart + 1;
-  const startShort = String(fyStart).slice(-2);
-  const endShort = String(fyEnd).slice(-2);
-  return `BS-${startShort}-${endShort}-001`;
-})(),
+    quotationNo: "",
     date: new Date().toLocaleDateString("en-GB"),
     consignorState: "",
     consignorName: "",
