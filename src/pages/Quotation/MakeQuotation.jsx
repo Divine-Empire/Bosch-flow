@@ -161,165 +161,172 @@ function MakeQuotation() {
     try {
       const scriptUrl =
         "https://script.google.com/macros/s/AKfycbwkvholGxpU6WFQt3i9pzctKXkBHsY-qkeJd8DenMCMANbKHq5rp3ULEV67uGrWhTDoag/exec";
-      const response = await fetch(scriptUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          sheetName: "Make Quotation",
-          action: "getQuotationData",
-          quotationNo: quotationNo,
-        }),
-      });
+
+      // Use doGet to fetch all sheet data (backend already supports this)
+      const response = await fetch(
+        `${scriptUrl}?sheet=Make Quotation`,
+        { method: "GET" }
+      );
 
       const result = await response.json();
+      console.log("Sheet data fetched:", result);
 
-      console.log("result", result);
-
-      if (result.success) {
-        const loadedData = result.quotationData;
-
-        const references = loadedData.consignorName
-          ? loadedData.consignorName
-            .split(",")
-            .map((r) => r.trim())
-            .filter((r) => r)
-          : [];
-        setSelectedReferences(references);
-
-        let items = [];
-        const specialDiscountFromItems = loadedData.specialDiscount || 0;
-
-        if (
-          loadedData.items &&
-          Array.isArray(loadedData.items) &&
-          loadedData.items.length > 0
-        ) {
-          items = loadedData.items.map((item, index) => ({
-            id: index + 1,
-            code: item.code || "",
-            name: item.name || "",
-            description: item.description || "",
-            gst: String(item.gst) || "",
-            units: item.units || "Nos",
-            rate: Number(item.rate) || 0,
-            discount: Number(item.discount) || 0,
-            flatDiscount: Number(item.flatDiscount) || 0,
-            amount: Number(item.amount) || 0,
-            qty: Number(item.qty) || 0,
-
-          }));
-        }
-
-        const subtotal = items.reduce(
-          (sum, item) => sum + Number(item.amount),
-          0
-        );
-        const totalFlatDiscount = Number(loadedData.totalFlatDiscount) || 0;
-        const cgstRate = Number(loadedData.cgstRate) || 9;
-        const sgstRate = Number(loadedData.sgstRate) || 9;
-        const igstRate = Number(loadedData.igstRate) || 18;
-        // const taxableAmount = Math.max(0, subtotal - totalFlatDiscount);
-        // const cgstAmount = Number(
-        //   (taxableAmount * (cgstRate / 100)).toFixed(2)
-        // );
-        // const sgstAmount = Number(
-        //   (taxableAmount * (sgstRate / 100)).toFixed(2)
-        // );
-        // const total = Number(
-        //   (
-        //     taxableAmount +
-        //     cgstAmount +
-        //     sgstAmount -
-        //     specialDiscountFromItems
-        //   ).toFixed(2)
-        // );
-        const taxableAmount = Math.max(0, subtotal - totalFlatDiscount);
-        const shouldUseIGST = checkShouldUseIGST(loadedData.consignorState, loadedData.consigneeState);
-
-        let cgstAmount = 0;
-        let sgstAmount = 0;
-        let igstAmount = 0;
-        let total = 0;
-
-        if (shouldUseIGST) {
-          igstAmount = Number((taxableAmount * (igstRate / 100)).toFixed(2));
-          total = Number((taxableAmount + igstAmount - specialDiscountFromItems).toFixed(2));
-        } else {
-          cgstAmount = Number((taxableAmount * (cgstRate / 100)).toFixed(2));
-          sgstAmount = Number((taxableAmount * (sgstRate / 100)).toFixed(2));
-          total = Number((taxableAmount + cgstAmount + sgstAmount - specialDiscountFromItems).toFixed(2));
-        }
-
-        // Parse special offers from loaded data
-        let specialOffers = [""];
-        if (loadedData.specialOffers) {
-          if (typeof loadedData.specialOffers === "string") {
-            // If it's a string, split by delimiter
-            specialOffers = loadedData.specialOffers
-              .split("|")
-              .filter((offer) => offer.trim());
-            if (specialOffers.length === 0) specialOffers = [""];
-          } else if (Array.isArray(loadedData.specialOffers)) {
-            specialOffers = loadedData.specialOffers;
-          }
-        }
-
-        setQuotationData({
-          ...loadedData,
-          items,
-          subtotal,
-          totalFlatDiscount,
-          cgstRate,
-          sgstRate,
-          igstRate: Number(loadedData.igstRate) || 18,
-          isIGST: shouldUseIGST,
-          cgstAmount,
-          sgstAmount,
-          igstAmount,
-          total,
-          accountNo: loadedData.accountNo || "",
-          bankName: loadedData.bankName || "",
-          bankAddress: loadedData.bankAddress || "",
-          ifscCode: loadedData.ifscCode || "",
-          email: loadedData.email || "",
-          website: loadedData.website || "",
-          pan: loadedData.pan || "",
-          consignorState: loadedData.consignorState || "",
-          consignorName: loadedData.consignorName || "",
-          consignorAddress: loadedData.consignorAddress || "",
-          consignorMobile: loadedData.consignorMobile || "",
-          consignorPhone: loadedData.consignorPhone || "",
-          consignorGSTIN: loadedData.consignorGSTIN || "",
-          consignorStateCode: loadedData.consignorStateCode || "",
-          consigneeName: loadedData.consigneeName || "",
-          consigneeAddress: loadedData.consigneeAddress || "",
-          shipTo: loadedData.shipTo || "",
-          consigneeState: loadedData.consigneeState || "",
-          consigneeContactName: loadedData.consigneeContactName || "",
-          consigneeContactNo: loadedData.consigneeContactNo || "",
-          consigneeGSTIN: loadedData.consigneeGSTIN || "",
-          consigneeStateCode: loadedData.consigneeStateCode || "",
-          msmeNumber: loadedData.msmeNumber || "",
-          preparedBy: loadedData.preparedBy || "",
-          specialOffers: specialOffers,
-          notes: Array.isArray(loadedData.notes)
-            ? loadedData.notes
-            : loadedData.notes
-              ? [loadedData.notes]
-              : [""],
-        });
-
-        setSpecialDiscount(specialDiscountFromItems);
+      if (!result.success || !result.data) {
+        alert("Failed to load sheet data.");
+        return;
       }
+
+      const allRows = result.data; // 2D array [[header...], [row1...], [row2...], ...]
+
+      // Find the row where Column B (index 1) matches the selected quotation number
+      const row = allRows.find(
+        (r) => String(r[1]).trim() === String(quotationNo).trim()
+      );
+
+      if (!row) {
+        alert("Quotation not found: " + quotationNo);
+        return;
+      }
+
+      console.log("Matched row:", row);
+
+      // Helper to safely get a value by index
+      const col = (i) => (row[i] !== undefined && row[i] !== null ? row[i] : "");
+
+      // --- Parse Items (Column 35, index 34) ---
+      let items = [];
+      let specialDiscountFromItems = 0;
+      const itemsRaw = col(34);
+
+      if (itemsRaw && typeof itemsRaw === "string" && itemsRaw.trim()) {
+        items = itemsRaw.split(";").filter(s => s.trim()).map((itemStr, index) => {
+          const parts = itemStr.split("|");
+          const itemSD = Number(parts[10]) || 0;
+          if (index === 0) specialDiscountFromItems = itemSD;
+          return {
+            id: index + 1,
+            code: parts[0] || "",
+            name: parts[1] || "",
+            description: parts[2] || "",
+            gst: parts[3] || "18",
+            qty: Number(parts[4]) || 1,
+            units: parts[5] || "Nos",
+            rate: Number(parts[6]) || 0,
+            discount: Number(parts[7]) || 0,
+            flatDiscount: Number(parts[8]) || 0,
+            amount: Number(parts[9]) || 0,
+          };
+        });
+      }
+
+      if (items.length === 0) {
+        items = [{ id: 1, code: "", name: "", description: "", gst: "18", qty: 1, units: "Nos", rate: 0, discount: 0, flatDiscount: 0, amount: 0 }];
+      }
+
+      // --- Parse Notes (Column 27, index 26) ---
+      let notes = [""];
+      const notesRaw = col(26);
+      if (notesRaw && String(notesRaw).trim()) {
+        notes = String(notesRaw).split("|").filter(n => n.trim());
+      }
+      if (notes.length === 0) notes = [""];
+
+      // --- Parse Special Offers (Column 36, index 35) ---
+      let specialOffers = [""];
+      const specialOffersRaw = col(35);
+      if (specialOffersRaw && String(specialOffersRaw).trim()) {
+        specialOffers = String(specialOffersRaw).split("|").filter(o => o.trim());
+      }
+      if (specialOffers.length === 0) specialOffers = [""];
+
+      // --- Recalculate Totals ---
+      const subtotal = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const totalFlatDiscount = items.reduce((sum, item) => sum + (Number(item.flatDiscount) || 0), 0);
+      const consignorState = String(col(4)).trim();
+      const consigneeState = String(col(14)).trim();
+      const shouldUseIGST = checkShouldUseIGST(consignorState, consigneeState);
+      const cgstRate = 9;
+      const sgstRate = 9;
+      const igstRate = 18;
+      const taxableAmount = Math.max(0, subtotal - totalFlatDiscount);
+      let cgstAmount = 0, sgstAmount = 0, igstAmount = 0, total = 0;
+      if (shouldUseIGST) {
+        igstAmount = Number((taxableAmount * (igstRate / 100)).toFixed(2));
+        total = Number((taxableAmount + igstAmount - specialDiscountFromItems).toFixed(2));
+      } else {
+        cgstAmount = Number((taxableAmount * (cgstRate / 100)).toFixed(2));
+        sgstAmount = Number((taxableAmount * (sgstRate / 100)).toFixed(2));
+        total = Number((taxableAmount + cgstAmount + sgstAmount - specialDiscountFromItems).toFixed(2));
+      }
+
+      // --- Set References ---
+      const consignorName = String(col(5));
+      const references = consignorName
+        ? consignorName.split(",").map(r => r.trim()).filter(Boolean)
+        : [];
+      setSelectedReferences(references);
+
+      // --- Map all fields by column index (Column A = index 0, Column B = index 1, ...) ---
+      setQuotationData({
+        quotationNo: col(1),        // Column B
+        date: col(2),               // Column C
+        preparedBy: col(3),         // Column D
+        consignorState,             // Column E
+        consignorName,              // Column F
+        consignorAddress: col(6),   // Column G
+        consignorMobile: col(7),    // Column H
+        consignorPhone: col(8),     // Column I
+        consignorGSTIN: col(9),     // Column J
+        consignorStateCode: col(10),// Column K
+        consigneeName: col(11),     // Column L
+        consigneeAddress: col(12),  // Column M
+        shipTo: col(13),            // Column N
+        consigneeState,             // Column O
+        consigneeContactName: col(15), // Column P
+        consigneeContactNo: col(16),   // Column Q
+        consigneeGSTIN: col(17),       // Column R
+        consigneeStateCode: col(18),   // Column S
+        msmeNumber: col(19),           // Column T
+        validity: col(20),             // Column U
+        paymentTerms: col(21),         // Column V
+        delivery: col(22),             // Column W
+        freight: col(23),              // Column X
+        insurance: col(24),            // Column Y
+        taxes: col(25),                // Column Z
+        notes,                         // Column AA (index 26)
+        accountNo: col(27),            // Column AB
+        bankName: col(28),             // Column AC
+        bankAddress: col(29),          // Column AD
+        ifscCode: col(30),             // Column AE
+        email: col(31),                // Column AF
+        website: col(32),              // Column AG
+        pan: col(33),                  // Column AH
+        items,                         // Column AI (index 34)
+        specialOffers,                 // Column AJ (index 35)
+        subtotal,
+        totalFlatDiscount,
+        cgstRate,
+        sgstRate,
+        igstRate,
+        isIGST: shouldUseIGST,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        total,
+      });
+
+      setSpecialDiscount(specialDiscountFromItems);
+
     } catch (error) {
       console.error("Error fetching quotation data:", error);
-      alert("Failed to load quotation data");
+      alert("Failed to load quotation data: " + error.message);
     } finally {
       setIsLoadingQuotation(false);
     }
   };
+
+
+
 
 
 
